@@ -75,11 +75,20 @@ const INITIAL_CATEGORIES: Category[] = [
 type CartLine = Item & { qty: number };
 
 function POS() {
-  const [activeCat, setActiveCat] = useState(CATEGORIES[0].id);
+  const [categories, setCategories] = useState<Category[]>(INITIAL_CATEGORIES);
+  const [activeCat, setActiveCat] = useState(INITIAL_CATEGORIES[0].id);
   const [cart, setCart] = useState<CartLine[]>([]);
   const [given, setGiven] = useState<string>("");
+  const [adminOpen, setAdminOpen] = useState(false);
 
-  const category = CATEGORIES.find((c) => c.id === activeCat)!;
+  const category =
+    categories.find((c) => c.id === activeCat) ?? categories[0];
+
+  useEffect(() => {
+    if (categories.length && !categories.find((c) => c.id === activeCat)) {
+      setActiveCat(categories[0].id);
+    }
+  }, [categories, activeCat]);
 
   const total = useMemo(
     () => cart.reduce((s, l) => s + l.price * l.qty, 0),
