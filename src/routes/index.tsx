@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
-import { Minus, Plus, Trash2, CreditCard, Banknote } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Minus, Plus, Trash2, CreditCard, Banknote, Settings, X } from "lucide-react";
 
 export const Route = createFileRoute("/")({
   component: POS,
