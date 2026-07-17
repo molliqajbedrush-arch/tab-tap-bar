@@ -134,7 +134,7 @@ function POS() {
             Kategorien
           </div>
         </div>
-        {CATEGORIES.map((c) => {
+        {categories.map((c) => {
           const active = c.id === activeCat;
           return (
             <button
