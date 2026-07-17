@@ -15,7 +15,7 @@ export const Route = createFileRoute("/")({
 type Item = { id: string; name: string; price: number };
 type Category = { id: string; name: string; items: Item[] };
 
-const CATEGORIES: Category[] = [
+const INITIAL_CATEGORIES: Category[] = [
   {
     id: "mineral",
     name: "Mineral",
