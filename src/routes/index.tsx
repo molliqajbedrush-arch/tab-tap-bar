@@ -155,12 +155,25 @@ function POS() {
 
       {/* Middle: Items grid */}
       <main className="flex w-[50%] flex-col p-4">
-        <div className="mb-3 flex items-baseline justify-between px-2">
-          <h1 className="text-2xl font-bold tracking-tight">{category.name}</h1>
-          <span className="text-sm text-neutral-500">{category.items.length} Artikel</span>
+        <div className="mb-3 flex items-center justify-between px-2">
+          <h1 className="text-2xl font-bold tracking-tight">
+            {category?.name ?? "Keine Kategorie"}
+          </h1>
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-neutral-500">
+              {category?.items.length ?? 0} Artikel
+            </span>
+            <button
+              onClick={() => setAdminOpen(true)}
+              className="rounded-xl p-2 text-neutral-500 transition hover:bg-neutral-800 hover:text-neutral-200"
+              aria-label="Einstellungen"
+            >
+              <Settings className="h-5 w-5" />
+            </button>
+          </div>
         </div>
         <div className="grid grid-cols-3 gap-3 overflow-y-auto pr-1 xl:grid-cols-4">
-          {category.items.map((it) => (
+          {category?.items.map((it) => (
             <button
               key={it.id}
               onClick={() => addItem(it)}
@@ -176,6 +189,7 @@ function POS() {
           ))}
         </div>
       </main>
+
 
       {/* Right: Cart */}
       <aside className="flex w-[30%] min-w-[300px] flex-col border-l border-neutral-800 bg-neutral-900">
