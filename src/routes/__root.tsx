@@ -77,14 +77,18 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
+      { title: "Kasse – Gastro POS" },
+      { name: "description", content: "Touch-optimiertes Kassensystem für Gastronomie im Dark Mode." },
       { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { property: "og:title", content: "Kasse – Gastro POS" },
+      { property: "og:description", content: "Touch-optimiertes Kassensystem für Gastronomie im Dark Mode." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:title", content: "Kasse – Gastro POS" },
+      { name: "twitter:description", content: "Touch-optimiertes Kassensystem für Gastronomie im Dark Mode." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/d2fc9d6e-f547-4377-875e-d4a58234fd2b/id-preview-f870a2c9--a0a77646-67d1-424d-87ce-318ac5d14949.lovable.app-1784517955927.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/d2fc9d6e-f547-4377-875e-d4a58234fd2b/id-preview-f870a2c9--a0a77646-67d1-424d-87ce-318ac5d14949.lovable.app-1784517955927.png" },
     ],
     links: [
       {
