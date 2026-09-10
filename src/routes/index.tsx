@@ -11,10 +11,12 @@ import {
   Printer,
   FileText,
   Download,
+  Lock,
+  LogOut,
 } from "lucide-react";
 
 export const Route = createFileRoute("/")({
-  component: POS,
+  component: App,
   head: () => ({
     meta: [
       { title: "Kasse – Gastro POS" },
@@ -96,6 +98,11 @@ const INITIAL_CATEGORIES: Category[] = [
 
 const SALES_KEY = "pos.sales.v1";
 const RECEIPT_KEY = "pos.receiptCounter.v1";
+const CATS_KEY = "pos.categories.v1";
+const CART_KEY = "pos.cart.v1";
+const PIN_KEY = "pos.adminPin.v1";
+const SESSION_KEY = "pos.session.v1";
+const DEFAULT_PIN = "1234";
 
 const fmt = (n: number) =>
   n.toLocaleString("de-CH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -126,7 +133,120 @@ const loadSales = (): Sale[] => {
 };
 const saveSales = (s: Sale[]) => localStorage.setItem(SALES_KEY, JSON.stringify(s));
 
-function POS() {
+const readJSON = <T,>(key: string, fallback: T): T => {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as T) : fallback;
+  } catch {
+    return fallback;
+  }
+};
+
+function App() {
+  const [authed, setAuthed] = useState(false);
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    setAuthed(sessionStorage.getItem(SESSION_KEY) === "1");
+    setReady(true);
+  }, []);
+
+  if (!ready) return <div className="h-screen w-full bg-neutral-950" />;
+  if (!authed)
+    return (
+      <LoginScreen
+        onSuccess={() => {
+          sessionStorage.setItem(SESSION_KEY, "1");
+          setAuthed(true);
+        }}
+      />
+    );
+  return (
+    <POS
+      onLogout={() => {
+        sessionStorage.removeItem(SESSION_KEY);
+        setAuthed(false);
+      }}
+    />
+  );
+}
+
+function LoginScreen({ onSuccess }: { onSuccess: () => void }) {
+  const [pin, setPin] = useState("");
+  const [error, setError] = useState(false);
+
+  const submit = () => {
+    const stored = localStorage.getItem(PIN_KEY) || DEFAULT_PIN;
+    if (pin === stored) onSuccess();
+    else {
+      setError(true);
+      setPin("");
+    }
+  };
+
+  const press = (d: string) => {
+    setError(false);
+    setPin((p) => (p.length < 8 ? p + d : p));
+  };
+
+  return (
+    <div className="flex h-screen w-full items-center justify-center bg-neutral-950 text-neutral-100">
+      <div className="w-[380px] rounded-3xl border border-neutral-800 bg-neutral-900 p-8">
+        <div className="mb-6 flex flex-col items-center gap-3">
+          <div className="rounded-2xl bg-amber-400/10 p-4">
+            <Lock className="h-8 w-8 text-amber-400" />
+          </div>
+          <h1 className="text-2xl font-bold">Admin Login</h1>
+          <p className="text-sm text-neutral-500">PIN eingeben, um die Kasse zu öffnen</p>
+        </div>
+
+        <div
+          className={[
+            "mb-5 flex h-16 items-center justify-center rounded-2xl border text-3xl tracking-[0.5em]",
+            error ? "border-red-500 text-red-400" : "border-neutral-700 bg-neutral-950",
+          ].join(" ")}
+        >
+          {error ? "Falsch" : pin.replace(/./g, "•") || <span className="text-neutral-700">••••</span>}
+        </div>
+
+        <div className="grid grid-cols-3 gap-3">
+          {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((d) => (
+            <button
+              key={d}
+              onClick={() => press(d)}
+              className="rounded-2xl bg-neutral-800 py-5 text-2xl font-bold transition hover:bg-neutral-700 active:scale-95"
+            >
+              {d}
+            </button>
+          ))}
+          <button
+            onClick={() => {
+              setError(false);
+              setPin("");
+            }}
+            className="rounded-2xl bg-neutral-800 py-5 text-base font-semibold text-neutral-400 transition hover:bg-neutral-700 active:scale-95"
+          >
+            C
+          </button>
+          <button
+            onClick={() => press("0")}
+            className="rounded-2xl bg-neutral-800 py-5 text-2xl font-bold transition hover:bg-neutral-700 active:scale-95"
+          >
+            0
+          </button>
+          <button
+            onClick={submit}
+            className="rounded-2xl bg-amber-400 py-5 text-lg font-bold text-neutral-950 transition hover:bg-amber-300 active:scale-95"
+          >
+            OK
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function POS({ onLogout }: { onLogout: () => void }) {
   const [categories, setCategories] = useState<Category[]>(INITIAL_CATEGORIES);
   const [activeCat, setActiveCat] = useState(INITIAL_CATEGORIES[0].id);
   const [cart, setCart] = useState<CartLine[]>([]);
@@ -135,10 +255,34 @@ function POS() {
   const [salesOpen, setSalesOpen] = useState(false);
   const [receiptSale, setReceiptSale] = useState<Sale | null>(null);
   const [sales, setSales] = useState<Sale[]>([]);
+  const [restored, setRestored] = useState(false);
 
+  // Wiederherstellung nach Absturz / Neustart
   useEffect(() => {
     setSales(loadSales());
+    const cats = readJSON<Category[] | null>(CATS_KEY, null);
+    if (cats && cats.length) {
+      setCategories(cats);
+      setActiveCat(cats[0].id);
+    }
+    const saved = readJSON<{ cart: CartLine[]; given: string } | null>(CART_KEY, null);
+    if (saved) {
+      setCart(saved.cart ?? []);
+      setGiven(saved.given ?? "");
+    }
+    setRestored(true);
   }, []);
+
+  // Laufende Sicherung
+  useEffect(() => {
+    if (!restored) return;
+    localStorage.setItem(CATS_KEY, JSON.stringify(categories));
+  }, [categories, restored]);
+
+  useEffect(() => {
+    if (!restored) return;
+    localStorage.setItem(CART_KEY, JSON.stringify({ cart, given }));
+  }, [cart, given, restored]);
 
   const category = categories.find((c) => c.id === activeCat) ?? categories[0];
 
@@ -246,6 +390,14 @@ function POS() {
               aria-label="Einstellungen"
             >
               <Settings className="h-5 w-5" />
+            </button>
+            <button
+              onClick={onLogout}
+              className="rounded-xl p-2 text-neutral-500 transition hover:bg-neutral-800 hover:text-red-400"
+              aria-label="Abmelden"
+              title="Abmelden"
+            >
+              <LogOut className="h-5 w-5" />
             </button>
           </div>
         </div>
@@ -703,6 +855,53 @@ function AdminModal({
   );
 }
 
+function PinSection() {
+  const [oldPin, setOldPin] = useState("");
+  const [newPin, setNewPin] = useState("");
+  const [msg, setMsg] = useState<string | null>(null);
+
+  const save = () => {
+    const stored = localStorage.getItem(PIN_KEY) || DEFAULT_PIN;
+    if (oldPin !== stored) return setMsg("Aktueller PIN ist falsch.");
+    if (newPin.trim().length < 4) return setMsg("Neuer PIN braucht mind. 4 Zeichen.");
+    localStorage.setItem(PIN_KEY, newPin.trim());
+    setOldPin("");
+    setNewPin("");
+    setMsg("PIN gespeichert.");
+  };
+
+  return (
+    <section className="rounded-2xl border border-neutral-800 bg-neutral-900/60 p-4">
+      <h3 className="mb-3 text-lg font-bold">Admin-PIN ändern</h3>
+      <div className="flex flex-wrap items-center gap-2">
+        <input
+          value={oldPin}
+          onChange={(e) => setOldPin(e.target.value)}
+          type="password"
+          inputMode="numeric"
+          placeholder="Aktueller PIN"
+          className="w-44 rounded-xl border border-neutral-700 bg-neutral-800 px-4 py-3 text-base outline-none focus:border-amber-400"
+        />
+        <input
+          value={newPin}
+          onChange={(e) => setNewPin(e.target.value)}
+          type="password"
+          inputMode="numeric"
+          placeholder="Neuer PIN"
+          className="w-44 rounded-xl border border-neutral-700 bg-neutral-800 px-4 py-3 text-base outline-none focus:border-amber-400"
+        />
+        <button
+          onClick={save}
+          className="rounded-xl bg-amber-400 px-5 py-3 font-bold text-neutral-950 transition hover:bg-amber-300"
+        >
+          Speichern
+        </button>
+        {msg && <span className="text-sm text-neutral-400">{msg}</span>}
+      </div>
+    </section>
+  );
+}
+
 function SortimentTab({
   categories,
   setCategories,
@@ -760,6 +959,9 @@ function SortimentTab({
 
   return (
     <div className="grid gap-6 md:grid-cols-2">
+      <div className="md:col-span-2">
+        <PinSection />
+      </div>
       <section className="flex flex-col gap-4">
         <h3 className="text-lg font-bold">Kategorien verwalten</h3>
         <div className="flex gap-2">
