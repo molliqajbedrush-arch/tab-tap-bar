@@ -957,6 +957,39 @@ function SortimentTab({
     );
   };
 
+  const [priceDrafts, setPriceDrafts] = useState<Record<string, string>>({});
+
+  const updateItem = (
+    catId: string,
+    itemId: string,
+    patch: Partial<{ name: string; price: number }>,
+  ) => {
+    setCategories((cs) =>
+      cs.map((c) =>
+        c.id === catId
+          ? {
+              ...c,
+              items: c.items.map((i) => (i.id === itemId ? { ...i, ...patch } : i)),
+            }
+          : c,
+      ),
+    );
+  };
+
+  const commitPrice = (catId: string, itemId: string) => {
+    const raw = priceDrafts[itemId];
+    if (raw === undefined) return;
+    const price = parseFloat(raw.replace(",", "."));
+    if (!isNaN(price) && price >= 0) {
+      updateItem(catId, itemId, { price });
+    }
+    setPriceDrafts((d) => {
+      const { [itemId]: _, ...rest } = d;
+      return rest;
+    });
+  };
+
+
   return (
     <div className="grid gap-6 md:grid-cols-2">
       <div className="md:col-span-2">
