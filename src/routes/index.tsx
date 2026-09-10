@@ -11,6 +11,8 @@ import {
   Printer,
   FileText,
   Download,
+  Lock,
+  LogOut,
 } from "lucide-react";
 
 export const Route = createFileRoute("/")({
