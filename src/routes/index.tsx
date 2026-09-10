@@ -855,6 +855,53 @@ function AdminModal({
   );
 }
 
+function PinSection() {
+  const [oldPin, setOldPin] = useState("");
+  const [newPin, setNewPin] = useState("");
+  const [msg, setMsg] = useState<string | null>(null);
+
+  const save = () => {
+    const stored = localStorage.getItem(PIN_KEY) || DEFAULT_PIN;
+    if (oldPin !== stored) return setMsg("Aktueller PIN ist falsch.");
+    if (newPin.trim().length < 4) return setMsg("Neuer PIN braucht mind. 4 Zeichen.");
+    localStorage.setItem(PIN_KEY, newPin.trim());
+    setOldPin("");
+    setNewPin("");
+    setMsg("PIN gespeichert.");
+  };
+
+  return (
+    <section className="rounded-2xl border border-neutral-800 bg-neutral-900/60 p-4">
+      <h3 className="mb-3 text-lg font-bold">Admin-PIN ändern</h3>
+      <div className="flex flex-wrap items-center gap-2">
+        <input
+          value={oldPin}
+          onChange={(e) => setOldPin(e.target.value)}
+          type="password"
+          inputMode="numeric"
+          placeholder="Aktueller PIN"
+          className="w-44 rounded-xl border border-neutral-700 bg-neutral-800 px-4 py-3 text-base outline-none focus:border-amber-400"
+        />
+        <input
+          value={newPin}
+          onChange={(e) => setNewPin(e.target.value)}
+          type="password"
+          inputMode="numeric"
+          placeholder="Neuer PIN"
+          className="w-44 rounded-xl border border-neutral-700 bg-neutral-800 px-4 py-3 text-base outline-none focus:border-amber-400"
+        />
+        <button
+          onClick={save}
+          className="rounded-xl bg-amber-400 px-5 py-3 font-bold text-neutral-950 transition hover:bg-amber-300"
+        >
+          Speichern
+        </button>
+        {msg && <span className="text-sm text-neutral-400">{msg}</span>}
+      </div>
+    </section>
+  );
+}
+
 function SortimentTab({
   categories,
   setCategories,
