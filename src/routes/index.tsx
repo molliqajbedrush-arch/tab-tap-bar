@@ -912,6 +912,9 @@ function SortimentTab({
 
   return (
     <div className="grid gap-6 md:grid-cols-2">
+      <div className="md:col-span-2">
+        <PinSection />
+      </div>
       <section className="flex flex-col gap-4">
         <h3 className="text-lg font-bold">Kategorien verwalten</h3>
         <div className="flex gap-2">
