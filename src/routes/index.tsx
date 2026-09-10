@@ -391,6 +391,14 @@ function POS({ onLogout }: { onLogout: () => void }) {
             >
               <Settings className="h-5 w-5" />
             </button>
+            <button
+              onClick={onLogout}
+              className="rounded-xl p-2 text-neutral-500 transition hover:bg-neutral-800 hover:text-red-400"
+              aria-label="Abmelden"
+              title="Abmelden"
+            >
+              <LogOut className="h-5 w-5" />
+            </button>
           </div>
         </div>
         <div className="grid grid-cols-3 gap-3 overflow-y-auto pr-1 xl:grid-cols-4">
