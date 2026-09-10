@@ -98,6 +98,11 @@ const INITIAL_CATEGORIES: Category[] = [
 
 const SALES_KEY = "pos.sales.v1";
 const RECEIPT_KEY = "pos.receiptCounter.v1";
+const CATS_KEY = "pos.categories.v1";
+const CART_KEY = "pos.cart.v1";
+const PIN_KEY = "pos.adminPin.v1";
+const SESSION_KEY = "pos.session.v1";
+const DEFAULT_PIN = "1234";
 
 const fmt = (n: number) =>
   n.toLocaleString("de-CH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
