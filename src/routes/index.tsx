@@ -1066,21 +1066,35 @@ function SortimentTab({
                   {c.items.map((it) => (
                     <li
                       key={it.id}
-                      className="flex items-center justify-between px-4 py-2 text-sm"
+                      className="flex items-center gap-2 px-3 py-2 text-sm"
                     >
-                      <span className="truncate">{it.name}</span>
-                      <div className="flex items-center gap-3">
-                        <span className="tabular-nums text-neutral-400">
-                          CHF {it.price.toFixed(2)}
-                        </span>
-                        <button
-                          onClick={() => deleteItem(c.id, it.id)}
-                          className="rounded-lg p-1.5 text-neutral-500 hover:bg-neutral-800 hover:text-red-400"
-                          aria-label="Löschen"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
+                      <input
+                        value={it.name}
+                        maxLength={60}
+                        onChange={(e) => updateItem(c.id, it.id, { name: e.target.value })}
+                        className="min-w-0 flex-1 rounded-lg border border-transparent bg-neutral-800/50 px-3 py-2 outline-none focus:border-amber-400"
+                        aria-label="Name"
+                      />
+                      <div className="flex shrink-0 items-center gap-1 rounded-lg bg-neutral-800/50 px-2 focus-within:ring-1 focus-within:ring-amber-400">
+                        <span className="text-xs text-neutral-500">CHF</span>
+                        <input
+                          inputMode="decimal"
+                          maxLength={8}
+                          value={priceDrafts[it.id] ?? it.price.toFixed(2)}
+                          onChange={(e) => setPriceDrafts((d) => ({ ...d, [it.id]: e.target.value }))}
+                          onBlur={() => commitPrice(c.id, it.id)}
+                          onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
+                          className="w-16 bg-transparent py-2 text-right tabular-nums outline-none"
+                          aria-label="Preis"
+                        />
                       </div>
+                      <button
+                        onClick={() => deleteItem(c.id, it.id)}
+                        className="shrink-0 rounded-lg p-1.5 text-neutral-500 hover:bg-neutral-800 hover:text-red-400"
+                        aria-label="Löschen"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
                     </li>
                   ))}
                 </ul>
