@@ -189,6 +189,19 @@ function LoginScreen({ onSuccess }: { onSuccess: () => void }) {
     setPin((p) => (p.length < 8 ? p + d : p));
   };
 
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (/^[0-9]$/.test(e.key)) press(e.key);
+      else if (e.key === "Backspace") {
+        setError(false);
+        setPin((p) => p.slice(0, -1));
+      } else if (e.key === "Enter") submit();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
+
+
   return (
     <div className="flex h-screen w-full items-center justify-center bg-neutral-950 text-neutral-100">
       <div className="w-[380px] rounded-3xl border border-neutral-800 bg-neutral-900 p-8">
@@ -401,7 +414,7 @@ function POS({ onLogout }: { onLogout: () => void }) {
             </button>
           </div>
         </div>
-        <div className="grid grid-cols-3 gap-3 overflow-y-auto pr-1 xl:grid-cols-4">
+        <div className="grid min-h-0 auto-rows-min grid-cols-3 gap-3 overflow-y-auto pr-1 xl:grid-cols-4">
           {category?.items.map((it) => (
             <button
               key={it.id}
@@ -1088,45 +1101,59 @@ function SortimentTab({
           Getränk hinzufügen
         </button>
 
-        <div className="mt-4 max-h-64 overflow-y-auto rounded-xl border border-neutral-800">
+      </section>
+
+      <section className="flex flex-col gap-3 md:col-span-2">
+        <h3 className="text-lg font-bold">Preise &amp; Namen bearbeiten</h3>
+        <p className="text-sm text-neutral-500">
+          Direkt im Feld tippen – Preis wird mit Enter oder beim Verlassen gespeichert.
+        </p>
+        <div className="max-h-[45vh] overflow-y-auto rounded-xl border border-neutral-800">
+          {categories.every((c) => c.items.length === 0) && (
+            <div className="px-4 py-8 text-center text-sm text-neutral-500">
+              Noch keine Getränke erfasst
+            </div>
+          )}
           {categories.map((c) =>
             c.items.length === 0 ? null : (
               <div key={c.id} className="border-b border-neutral-800 last:border-b-0">
-                <div className="bg-neutral-800/60 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-neutral-400">
+                <div className="sticky top-0 bg-neutral-800 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-neutral-300">
                   {c.name}
                 </div>
-                <ul>
+                <ul className="divide-y divide-neutral-800/60">
                   {c.items.map((it) => (
-                    <li
-                      key={it.id}
-                      className="flex items-center gap-2 px-3 py-2 text-sm"
-                    >
+                    <li key={it.id} className="flex items-center gap-3 px-3 py-2">
                       <input
                         value={it.name}
                         maxLength={60}
                         onChange={(e) => updateItem(c.id, it.id, { name: e.target.value })}
-                        className="min-w-0 flex-1 rounded-lg border border-transparent bg-neutral-800/50 px-3 py-2 outline-none focus:border-amber-400"
+                        className="min-w-0 flex-1 rounded-lg border border-neutral-700 bg-neutral-800/60 px-3 py-3 text-base outline-none focus:border-amber-400"
                         aria-label="Name"
                       />
-                      <div className="flex shrink-0 items-center gap-1 rounded-lg bg-neutral-800/50 px-2 focus-within:ring-1 focus-within:ring-amber-400">
+                      <div className="flex shrink-0 items-center gap-2 rounded-lg border border-neutral-700 bg-neutral-800/60 px-3 focus-within:border-amber-400">
                         <span className="text-xs text-neutral-500">CHF</span>
                         <input
                           inputMode="decimal"
                           maxLength={8}
                           value={priceDrafts[it.id] ?? it.price.toFixed(2)}
-                          onChange={(e) => setPriceDrafts((d) => ({ ...d, [it.id]: e.target.value }))}
+                          onChange={(e) =>
+                            setPriceDrafts((d) => ({ ...d, [it.id]: e.target.value }))
+                          }
+                          onFocus={(e) => e.currentTarget.select()}
                           onBlur={() => commitPrice(c.id, it.id)}
-                          onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
-                          className="w-16 bg-transparent py-2 text-right tabular-nums outline-none"
+                          onKeyDown={(e) =>
+                            e.key === "Enter" && (e.target as HTMLInputElement).blur()
+                          }
+                          className="w-24 bg-transparent py-3 text-right text-base font-bold tabular-nums outline-none"
                           aria-label="Preis"
                         />
                       </div>
                       <button
                         onClick={() => deleteItem(c.id, it.id)}
-                        className="shrink-0 rounded-lg p-1.5 text-neutral-500 hover:bg-neutral-800 hover:text-red-400"
+                        className="shrink-0 rounded-lg p-3 text-neutral-500 hover:bg-neutral-800 hover:text-red-400"
                         aria-label="Löschen"
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 className="h-5 w-5" />
                       </button>
                     </li>
                   ))}
@@ -1136,6 +1163,7 @@ function SortimentTab({
           )}
         </div>
       </section>
+
     </div>
   );
 }
