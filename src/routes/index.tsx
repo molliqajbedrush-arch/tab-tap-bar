@@ -189,6 +189,19 @@ function LoginScreen({ onSuccess }: { onSuccess: () => void }) {
     setPin((p) => (p.length < 8 ? p + d : p));
   };
 
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (/^[0-9]$/.test(e.key)) press(e.key);
+      else if (e.key === "Backspace") {
+        setError(false);
+        setPin((p) => p.slice(0, -1));
+      } else if (e.key === "Enter") submit();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
+
+
   return (
     <div className="flex h-screen w-full items-center justify-center bg-neutral-950 text-neutral-100">
       <div className="w-[380px] rounded-3xl border border-neutral-800 bg-neutral-900 p-8">
