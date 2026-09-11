@@ -401,7 +401,7 @@ function POS({ onLogout }: { onLogout: () => void }) {
             </button>
           </div>
         </div>
-        <div className="grid grid-cols-3 gap-3 overflow-y-auto pr-1 xl:grid-cols-4">
+        <div className="grid min-h-0 auto-rows-min grid-cols-3 gap-3 overflow-y-auto pr-1 xl:grid-cols-4">
           {category?.items.map((it) => (
             <button
               key={it.id}
