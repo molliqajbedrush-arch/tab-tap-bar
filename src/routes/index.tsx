@@ -27,17 +27,20 @@ export const Route = createFileRoute("/")({
 
 type Item = { id: string; name: string; price: number };
 type Category = { id: string; name: string; items: Item[] };
-type CartLine = Item & { qty: number };
+type CartLine = Item & { qty: number; free?: boolean };
 type Sale = {
   id: string;
   receiptNo: string;
   timestamp: string; // ISO
+  shiftDate?: string; // Geschäftstag (Schichtbeginn)
   lines: CartLine[];
   total: number;
+  freeTotal?: number;
   given: number;
   change: number;
-  payment: "Bar" | "Karte";
+  payment: "Bar" | "Karte" | "Gratis";
 };
+
 
 const INITIAL_CATEGORIES: Category[] = [
   {
