@@ -148,8 +148,9 @@ const fmtDay = (d: string) => {
   return `${day}.${m}.${y}`;
 };
 
-
+const fmt = (n: number) =>
   n.toLocaleString("de-CH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
 
 const fmtDate = (iso: string) => {
   const d = new Date(iso);
