@@ -13,6 +13,9 @@ import {
   Download,
   Lock,
   LogOut,
+  Gift,
+  MoonStar,
+
 } from "lucide-react";
 
 export const Route = createFileRoute("/")({
