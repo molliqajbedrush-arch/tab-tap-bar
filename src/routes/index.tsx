@@ -314,10 +314,12 @@ function POS({ onLogout }: { onLogout: () => void }) {
   const [receiptSale, setReceiptSale] = useState<Sale | null>(null);
   const [sales, setSales] = useState<Sale[]>([]);
   const [restored, setRestored] = useState(false);
+  const [shift, setShift] = useState<Shift | null>(null);
 
   // Wiederherstellung nach Absturz / Neustart
   useEffect(() => {
     setSales(loadSales());
+    setShift(loadShift());
     const cats = readJSON<Category[] | null>(CATS_KEY, null);
     if (cats && cats.length) {
       setCategories(cats);
@@ -342,24 +344,52 @@ function POS({ onLogout }: { onLogout: () => void }) {
     localStorage.setItem(CART_KEY, JSON.stringify({ cart, given }));
   }, [cart, given, restored]);
 
-  const category = categories.find((c) => c.id === activeCat) ?? categories[0];
+  const isFreeCat = activeCat === FREE_CAT;
+  const category = categories.find((c) => c.id === activeCat);
+
+  // Alle Getränke aus allen Rubriken für Spezial / Jeton
+  const allItems = useMemo(() => {
+    const seen = new Set<string>();
+    const out: Item[] = [];
+    for (const c of categories) {
+      for (const it of c.items) {
+        if (seen.has(it.id)) continue;
+        seen.add(it.id);
+        out.push(it);
+      }
+    }
+    return out;
+  }, [categories]);
+
+  const gridItems = isFreeCat ? allItems : (category?.items ?? []);
+  const gridTitle = isFreeCat ? FREE_CAT_NAME : (category?.name ?? "Keine Kategorie");
 
   useEffect(() => {
+    if (isFreeCat) return;
     if (categories.length && !categories.find((c) => c.id === activeCat)) {
       setActiveCat(categories[0].id);
     }
-  }, [categories, activeCat]);
+  }, [categories, activeCat, isFreeCat]);
 
-  const total = useMemo(() => cart.reduce((s, l) => s + l.price * l.qty, 0), [cart]);
+  const total = useMemo(
+    () => cart.filter((l) => !l.free).reduce((s, l) => s + l.price * l.qty, 0),
+    [cart],
+  );
+  const freeTotal = useMemo(
+    () => cart.filter((l) => l.free).reduce((s, l) => s + l.price * l.qty, 0),
+    [cart],
+  );
   const givenNum = parseFloat(given.replace(",", ".")) || 0;
   const change = givenNum - total;
 
-  const addItem = (it: Item) =>
+  const addItem = (it: Item, free = false) => {
+    const lineId = free ? `free-${it.id}` : it.id;
     setCart((c) => {
-      const found = c.find((l) => l.id === it.id);
-      if (found) return c.map((l) => (l.id === it.id ? { ...l, qty: l.qty + 1 } : l));
-      return [...c, { ...it, qty: 1 }];
+      const found = c.find((l) => l.id === lineId);
+      if (found) return c.map((l) => (l.id === lineId ? { ...l, qty: l.qty + 1 } : l));
+      return [...c, { ...it, id: lineId, qty: 1, ...(free ? { free: true } : {}) }];
     });
+  };
 
   const changeQty = (id: string, d: number) =>
     setCart((c) =>
@@ -377,14 +407,18 @@ function POS({ onLogout }: { onLogout: () => void }) {
       return String(cur + n);
     });
 
-  const finalizeSale = (payment: "Bar" | "Karte") => {
+  const finalizeSale = (payment: "Bar" | "Karte" | "Gratis") => {
     if (cart.length === 0) return;
+    if (payment === "Gratis" && total > 0) return;
+    if (payment !== "Gratis" && total <= 0) return;
     const sale: Sale = {
       id: `sale-${Date.now()}`,
       receiptNo: nextReceiptNo(),
       timestamp: new Date().toISOString(),
+      shiftDate: shift?.date ?? todayKey(),
       lines: cart,
       total,
+      freeTotal,
       given: payment === "Bar" ? givenNum || total : total,
       change: payment === "Bar" ? Math.max(0, givenNum - total) : 0,
       payment,
@@ -395,6 +429,24 @@ function POS({ onLogout }: { onLogout: () => void }) {
     setReceiptSale(sale);
     clearCart();
   };
+
+  const endShift = () => {
+    if (cart.length > 0) {
+      window.alert("Bitte offene Bestellung zuerst abschliessen oder leeren.");
+      return;
+    }
+    if (
+      !window.confirm(
+        `Schicht vom ${fmtDay(shift?.date ?? todayKey())} beenden?\nEine neue Schicht startet mit dem heutigen Datum.`,
+      )
+    )
+      return;
+    const s = newShift();
+    saveShift(s);
+    setShift(s);
+    setAdminOpen(true);
+  };
+
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-neutral-950 text-neutral-100 antialiased">
