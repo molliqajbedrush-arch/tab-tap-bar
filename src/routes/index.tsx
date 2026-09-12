@@ -457,35 +457,68 @@ function POS({ onLogout }: { onLogout: () => void }) {
             Kategorien
           </div>
         </div>
-        {categories.map((c) => {
-          const active = c.id === activeCat;
-          return (
-            <button
-              key={c.id}
-              onClick={() => setActiveCat(c.id)}
-              className={[
-                "w-full rounded-2xl px-4 py-6 text-left text-xl font-semibold transition active:scale-[0.98]",
-                active
-                  ? "bg-amber-400 text-neutral-950 shadow-lg shadow-amber-400/20"
-                  : "bg-neutral-800 text-neutral-200 hover:bg-neutral-700",
-              ].join(" ")}
-            >
-              {c.name}
-            </button>
-          );
-        })}
+        <div className="flex flex-1 flex-col gap-3 overflow-y-auto">
+          {categories.map((c) => {
+            const active = c.id === activeCat;
+            return (
+              <button
+                key={c.id}
+                onClick={() => setActiveCat(c.id)}
+                className={[
+                  "w-full rounded-2xl px-4 py-6 text-left text-xl font-semibold transition active:scale-[0.98]",
+                  active
+                    ? "bg-amber-400 text-neutral-950 shadow-lg shadow-amber-400/20"
+                    : "bg-neutral-800 text-neutral-200 hover:bg-neutral-700",
+                ].join(" ")}
+              >
+                {c.name}
+              </button>
+            );
+          })}
+          <button
+            onClick={() => setActiveCat(FREE_CAT)}
+            className={[
+              "mt-2 flex w-full items-center gap-3 rounded-2xl px-4 py-6 text-left text-xl font-semibold transition active:scale-[0.98]",
+              isFreeCat
+                ? "bg-violet-500 text-neutral-950 shadow-lg shadow-violet-500/20"
+                : "border border-violet-500/40 bg-neutral-800 text-violet-300 hover:bg-neutral-700",
+            ].join(" ")}
+          >
+            <Gift className="h-6 w-6 shrink-0" />
+            {FREE_CAT_NAME}
+          </button>
+        </div>
+
+        <div className="mt-3 rounded-2xl border border-neutral-800 bg-neutral-950/60 p-3">
+          <div className="text-xs font-semibold uppercase tracking-widest text-neutral-500">
+            Schicht
+          </div>
+          <div className="mt-1 text-base font-bold tabular-nums">
+            {fmtDay(shift?.date ?? todayKey())}
+          </div>
+          <button
+            onClick={endShift}
+            className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-neutral-800 py-3 text-sm font-bold text-neutral-200 hover:bg-neutral-700 active:scale-95"
+          >
+            <MoonStar className="h-4 w-4" />
+            Schichtende
+          </button>
+        </div>
       </aside>
 
       {/* Middle: Items grid */}
       <main className="flex w-[50%] flex-col p-4">
         <div className="mb-3 flex items-center justify-between px-2">
-          <h1 className="text-2xl font-bold tracking-tight">
-            {category?.name ?? "Keine Kategorie"}
+          <h1
+            className={[
+              "text-2xl font-bold tracking-tight",
+              isFreeCat ? "text-violet-300" : "",
+            ].join(" ")}
+          >
+            {gridTitle}
           </h1>
           <div className="flex items-center gap-3">
-            <span className="text-sm text-neutral-500">
-              {category?.items.length ?? 0} Artikel
-            </span>
+            <span className="text-sm text-neutral-500">{gridItems.length} Artikel</span>
             <button
               onClick={() => setSalesOpen(true)}
               className="rounded-xl p-2 text-neutral-500 transition hover:bg-neutral-800 hover:text-neutral-200"
@@ -511,22 +544,38 @@ function POS({ onLogout }: { onLogout: () => void }) {
             </button>
           </div>
         </div>
+        {isFreeCat && (
+          <div className="mb-3 rounded-xl border border-violet-500/30 bg-violet-500/10 px-4 py-2 text-sm text-violet-200">
+            Gratisgetränke – werden separat gezählt und nicht zum Schichtumsatz gerechnet.
+          </div>
+        )}
         <div className="grid min-h-0 auto-rows-min grid-cols-3 gap-3 overflow-y-auto pr-1 xl:grid-cols-4">
-          {category?.items.map((it) => (
+          {gridItems.map((it) => (
             <button
               key={it.id}
-              onClick={() => addItem(it)}
-              className="group flex aspect-square flex-col items-center justify-between rounded-2xl border border-neutral-800 bg-neutral-900 p-4 text-center transition hover:border-amber-400/50 hover:bg-neutral-800 active:scale-[0.97]"
+              onClick={() => addItem(it, isFreeCat)}
+              className={[
+                "group flex aspect-square flex-col items-center justify-between rounded-2xl border bg-neutral-900 p-4 text-center transition active:scale-[0.97]",
+                isFreeCat
+                  ? "border-violet-500/30 hover:border-violet-400 hover:bg-neutral-800"
+                  : "border-neutral-800 hover:border-amber-400/50 hover:bg-neutral-800",
+              ].join(" ")}
             >
               <span className="flex-1 items-center flex text-lg font-semibold leading-tight text-neutral-100">
                 {it.name}
               </span>
-              <span className="mt-2 rounded-lg bg-neutral-800 px-3 py-1 text-base font-bold text-amber-400 group-hover:bg-neutral-950">
+              <span
+                className={[
+                  "mt-2 rounded-lg bg-neutral-800 px-3 py-1 text-base font-bold group-hover:bg-neutral-950",
+                  isFreeCat ? "text-violet-300" : "text-amber-400",
+                ].join(" ")}
+              >
                 CHF {fmt(it.price)}
               </span>
             </button>
           ))}
         </div>
+
       </main>
 
       {/* Right: Cart */}
