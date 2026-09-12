@@ -105,9 +105,50 @@ const CATS_KEY = "pos.categories.v1";
 const CART_KEY = "pos.cart.v1";
 const PIN_KEY = "pos.adminPin.v1";
 const SESSION_KEY = "pos.session.v1";
+const SHIFT_KEY = "pos.shift.v1";
 const DEFAULT_PIN = "1234";
 
-const fmt = (n: number) =>
+const FREE_CAT = "__free";
+const FREE_CAT_NAME = "Spezial / Jeton";
+
+type Shift = { id: string; date: string; startedAt: string };
+
+const todayKey = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
+    d.getDate(),
+  ).padStart(2, "0")}`;
+};
+
+const newShift = (): Shift => ({
+  id: `shift-${Date.now()}`,
+  date: todayKey(),
+  startedAt: new Date().toISOString(),
+});
+
+const loadShift = (): Shift => {
+  try {
+    const raw = localStorage.getItem(SHIFT_KEY);
+    if (raw) {
+      const s = JSON.parse(raw) as Shift;
+      if (s && s.date) return s;
+    }
+  } catch {
+    /* ignore */
+  }
+  const s = newShift();
+  localStorage.setItem(SHIFT_KEY, JSON.stringify(s));
+  return s;
+};
+
+const saveShift = (s: Shift) => localStorage.setItem(SHIFT_KEY, JSON.stringify(s));
+
+const fmtDay = (d: string) => {
+  const [y, m, day] = d.split("-");
+  return `${day}.${m}.${y}`;
+};
+
+
   n.toLocaleString("de-CH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 const fmtDate = (iso: string) => {
