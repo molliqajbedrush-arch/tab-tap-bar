@@ -710,24 +710,37 @@ function POS({ onLogout }: { onLogout: () => void }) {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-2 border-t border-neutral-800 p-3">
-          <button
-            onClick={() => finalizeSale("Bar")}
-            disabled={cart.length === 0}
-            className="flex items-center justify-center gap-2 rounded-2xl bg-emerald-500 py-5 text-lg font-black text-neutral-950 shadow-lg shadow-emerald-500/20 transition hover:bg-emerald-400 active:scale-[0.98] disabled:opacity-40"
-          >
-            <Banknote className="h-6 w-6" />
-            Bar
-          </button>
-          <button
-            onClick={() => finalizeSale("Karte")}
-            disabled={cart.length === 0}
-            className="flex items-center justify-center gap-2 rounded-2xl bg-sky-500 py-5 text-lg font-black text-neutral-950 shadow-lg shadow-sky-500/20 transition hover:bg-sky-400 active:scale-[0.98] disabled:opacity-40"
-          >
-            <CreditCard className="h-6 w-6" />
-            Karte
-          </button>
-        </div>
+        {total === 0 && freeTotal > 0 ? (
+          <div className="border-t border-neutral-800 p-3">
+            <button
+              onClick={() => finalizeSale("Gratis")}
+              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-violet-500 py-5 text-lg font-black text-neutral-950 shadow-lg shadow-violet-500/20 transition hover:bg-violet-400 active:scale-[0.98]"
+            >
+              <Gift className="h-6 w-6" />
+              Gratis buchen
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-2 border-t border-neutral-800 p-3">
+            <button
+              onClick={() => finalizeSale("Bar")}
+              disabled={total === 0}
+              className="flex items-center justify-center gap-2 rounded-2xl bg-emerald-500 py-5 text-lg font-black text-neutral-950 shadow-lg shadow-emerald-500/20 transition hover:bg-emerald-400 active:scale-[0.98] disabled:opacity-40"
+            >
+              <Banknote className="h-6 w-6" />
+              Bar
+            </button>
+            <button
+              onClick={() => finalizeSale("Karte")}
+              disabled={total === 0}
+              className="flex items-center justify-center gap-2 rounded-2xl bg-sky-500 py-5 text-lg font-black text-neutral-950 shadow-lg shadow-sky-500/20 transition hover:bg-sky-400 active:scale-[0.98] disabled:opacity-40"
+            >
+              <CreditCard className="h-6 w-6" />
+              Karte
+            </button>
+          </div>
+        )}
+
       </aside>
 
       {adminOpen && (
