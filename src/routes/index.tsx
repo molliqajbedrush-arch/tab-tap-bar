@@ -13,6 +13,9 @@ import {
   Download,
   Lock,
   LogOut,
+  Gift,
+  MoonStar,
+
 } from "lucide-react";
 
 export const Route = createFileRoute("/")({
@@ -27,17 +30,20 @@ export const Route = createFileRoute("/")({
 
 type Item = { id: string; name: string; price: number };
 type Category = { id: string; name: string; items: Item[] };
-type CartLine = Item & { qty: number };
+type CartLine = Item & { qty: number; free?: boolean };
 type Sale = {
   id: string;
   receiptNo: string;
   timestamp: string; // ISO
+  shiftDate?: string; // Geschäftstag (Schichtbeginn)
   lines: CartLine[];
   total: number;
+  freeTotal?: number;
   given: number;
   change: number;
-  payment: "Bar" | "Karte";
+  payment: "Bar" | "Karte" | "Gratis";
 };
+
 
 const INITIAL_CATEGORIES: Category[] = [
   {
@@ -102,10 +108,52 @@ const CATS_KEY = "pos.categories.v1";
 const CART_KEY = "pos.cart.v1";
 const PIN_KEY = "pos.adminPin.v1";
 const SESSION_KEY = "pos.session.v1";
+const SHIFT_KEY = "pos.shift.v1";
 const DEFAULT_PIN = "1234";
+
+const FREE_CAT = "__free";
+const FREE_CAT_NAME = "Spezial / Jeton";
+
+type Shift = { id: string; date: string; startedAt: string };
+
+const todayKey = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
+    d.getDate(),
+  ).padStart(2, "0")}`;
+};
+
+const newShift = (): Shift => ({
+  id: `shift-${Date.now()}`,
+  date: todayKey(),
+  startedAt: new Date().toISOString(),
+});
+
+const loadShift = (): Shift => {
+  try {
+    const raw = localStorage.getItem(SHIFT_KEY);
+    if (raw) {
+      const s = JSON.parse(raw) as Shift;
+      if (s && s.date) return s;
+    }
+  } catch {
+    /* ignore */
+  }
+  const s = newShift();
+  localStorage.setItem(SHIFT_KEY, JSON.stringify(s));
+  return s;
+};
+
+const saveShift = (s: Shift) => localStorage.setItem(SHIFT_KEY, JSON.stringify(s));
+
+const fmtDay = (d: string) => {
+  const [y, m, day] = d.split("-");
+  return `${day}.${m}.${y}`;
+};
 
 const fmt = (n: number) =>
   n.toLocaleString("de-CH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
 
 const fmtDate = (iso: string) => {
   const d = new Date(iso);
@@ -269,10 +317,12 @@ function POS({ onLogout }: { onLogout: () => void }) {
   const [receiptSale, setReceiptSale] = useState<Sale | null>(null);
   const [sales, setSales] = useState<Sale[]>([]);
   const [restored, setRestored] = useState(false);
+  const [shift, setShift] = useState<Shift | null>(null);
 
   // Wiederherstellung nach Absturz / Neustart
   useEffect(() => {
     setSales(loadSales());
+    setShift(loadShift());
     const cats = readJSON<Category[] | null>(CATS_KEY, null);
     if (cats && cats.length) {
       setCategories(cats);
@@ -297,24 +347,52 @@ function POS({ onLogout }: { onLogout: () => void }) {
     localStorage.setItem(CART_KEY, JSON.stringify({ cart, given }));
   }, [cart, given, restored]);
 
-  const category = categories.find((c) => c.id === activeCat) ?? categories[0];
+  const isFreeCat = activeCat === FREE_CAT;
+  const category = categories.find((c) => c.id === activeCat);
+
+  // Alle Getränke aus allen Rubriken für Spezial / Jeton
+  const allItems = useMemo(() => {
+    const seen = new Set<string>();
+    const out: Item[] = [];
+    for (const c of categories) {
+      for (const it of c.items) {
+        if (seen.has(it.id)) continue;
+        seen.add(it.id);
+        out.push(it);
+      }
+    }
+    return out;
+  }, [categories]);
+
+  const gridItems = isFreeCat ? allItems : (category?.items ?? []);
+  const gridTitle = isFreeCat ? FREE_CAT_NAME : (category?.name ?? "Keine Kategorie");
 
   useEffect(() => {
+    if (isFreeCat) return;
     if (categories.length && !categories.find((c) => c.id === activeCat)) {
       setActiveCat(categories[0].id);
     }
-  }, [categories, activeCat]);
+  }, [categories, activeCat, isFreeCat]);
 
-  const total = useMemo(() => cart.reduce((s, l) => s + l.price * l.qty, 0), [cart]);
+  const total = useMemo(
+    () => cart.filter((l) => !l.free).reduce((s, l) => s + l.price * l.qty, 0),
+    [cart],
+  );
+  const freeTotal = useMemo(
+    () => cart.filter((l) => l.free).reduce((s, l) => s + l.price * l.qty, 0),
+    [cart],
+  );
   const givenNum = parseFloat(given.replace(",", ".")) || 0;
   const change = givenNum - total;
 
-  const addItem = (it: Item) =>
+  const addItem = (it: Item, free = false) => {
+    const lineId = free ? `free-${it.id}` : it.id;
     setCart((c) => {
-      const found = c.find((l) => l.id === it.id);
-      if (found) return c.map((l) => (l.id === it.id ? { ...l, qty: l.qty + 1 } : l));
-      return [...c, { ...it, qty: 1 }];
+      const found = c.find((l) => l.id === lineId);
+      if (found) return c.map((l) => (l.id === lineId ? { ...l, qty: l.qty + 1 } : l));
+      return [...c, { ...it, id: lineId, qty: 1, ...(free ? { free: true } : {}) }];
     });
+  };
 
   const changeQty = (id: string, d: number) =>
     setCart((c) =>
@@ -332,14 +410,18 @@ function POS({ onLogout }: { onLogout: () => void }) {
       return String(cur + n);
     });
 
-  const finalizeSale = (payment: "Bar" | "Karte") => {
+  const finalizeSale = (payment: "Bar" | "Karte" | "Gratis") => {
     if (cart.length === 0) return;
+    if (payment === "Gratis" && total > 0) return;
+    if (payment !== "Gratis" && total <= 0) return;
     const sale: Sale = {
       id: `sale-${Date.now()}`,
       receiptNo: nextReceiptNo(),
       timestamp: new Date().toISOString(),
+      shiftDate: shift?.date ?? todayKey(),
       lines: cart,
       total,
+      freeTotal,
       given: payment === "Bar" ? givenNum || total : total,
       change: payment === "Bar" ? Math.max(0, givenNum - total) : 0,
       payment,
@@ -351,6 +433,24 @@ function POS({ onLogout }: { onLogout: () => void }) {
     clearCart();
   };
 
+  const endShift = () => {
+    if (cart.length > 0) {
+      window.alert("Bitte offene Bestellung zuerst abschliessen oder leeren.");
+      return;
+    }
+    if (
+      !window.confirm(
+        `Schicht vom ${fmtDay(shift?.date ?? todayKey())} beenden?\nEine neue Schicht startet mit dem heutigen Datum.`,
+      )
+    )
+      return;
+    const s = newShift();
+    saveShift(s);
+    setShift(s);
+    setAdminOpen(true);
+  };
+
+
   return (
     <div className="flex h-screen w-full overflow-hidden bg-neutral-950 text-neutral-100 antialiased">
       {/* Left: Categories */}
@@ -360,35 +460,68 @@ function POS({ onLogout }: { onLogout: () => void }) {
             Kategorien
           </div>
         </div>
-        {categories.map((c) => {
-          const active = c.id === activeCat;
-          return (
-            <button
-              key={c.id}
-              onClick={() => setActiveCat(c.id)}
-              className={[
-                "w-full rounded-2xl px-4 py-6 text-left text-xl font-semibold transition active:scale-[0.98]",
-                active
-                  ? "bg-amber-400 text-neutral-950 shadow-lg shadow-amber-400/20"
-                  : "bg-neutral-800 text-neutral-200 hover:bg-neutral-700",
-              ].join(" ")}
-            >
-              {c.name}
-            </button>
-          );
-        })}
+        <div className="flex flex-1 flex-col gap-3 overflow-y-auto">
+          {categories.map((c) => {
+            const active = c.id === activeCat;
+            return (
+              <button
+                key={c.id}
+                onClick={() => setActiveCat(c.id)}
+                className={[
+                  "w-full rounded-2xl px-4 py-6 text-left text-xl font-semibold transition active:scale-[0.98]",
+                  active
+                    ? "bg-amber-400 text-neutral-950 shadow-lg shadow-amber-400/20"
+                    : "bg-neutral-800 text-neutral-200 hover:bg-neutral-700",
+                ].join(" ")}
+              >
+                {c.name}
+              </button>
+            );
+          })}
+          <button
+            onClick={() => setActiveCat(FREE_CAT)}
+            className={[
+              "mt-2 flex w-full items-center gap-3 rounded-2xl px-4 py-6 text-left text-xl font-semibold transition active:scale-[0.98]",
+              isFreeCat
+                ? "bg-violet-500 text-neutral-950 shadow-lg shadow-violet-500/20"
+                : "border border-violet-500/40 bg-neutral-800 text-violet-300 hover:bg-neutral-700",
+            ].join(" ")}
+          >
+            <Gift className="h-6 w-6 shrink-0" />
+            {FREE_CAT_NAME}
+          </button>
+        </div>
+
+        <div className="mt-3 rounded-2xl border border-neutral-800 bg-neutral-950/60 p-3">
+          <div className="text-xs font-semibold uppercase tracking-widest text-neutral-500">
+            Schicht
+          </div>
+          <div className="mt-1 text-base font-bold tabular-nums">
+            {fmtDay(shift?.date ?? todayKey())}
+          </div>
+          <button
+            onClick={endShift}
+            className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-neutral-800 py-3 text-sm font-bold text-neutral-200 hover:bg-neutral-700 active:scale-95"
+          >
+            <MoonStar className="h-4 w-4" />
+            Schichtende
+          </button>
+        </div>
       </aside>
 
       {/* Middle: Items grid */}
       <main className="flex w-[50%] flex-col p-4">
         <div className="mb-3 flex items-center justify-between px-2">
-          <h1 className="text-2xl font-bold tracking-tight">
-            {category?.name ?? "Keine Kategorie"}
+          <h1
+            className={[
+              "text-2xl font-bold tracking-tight",
+              isFreeCat ? "text-violet-300" : "",
+            ].join(" ")}
+          >
+            {gridTitle}
           </h1>
           <div className="flex items-center gap-3">
-            <span className="text-sm text-neutral-500">
-              {category?.items.length ?? 0} Artikel
-            </span>
+            <span className="text-sm text-neutral-500">{gridItems.length} Artikel</span>
             <button
               onClick={() => setSalesOpen(true)}
               className="rounded-xl p-2 text-neutral-500 transition hover:bg-neutral-800 hover:text-neutral-200"
@@ -414,22 +547,38 @@ function POS({ onLogout }: { onLogout: () => void }) {
             </button>
           </div>
         </div>
+        {isFreeCat && (
+          <div className="mb-3 rounded-xl border border-violet-500/30 bg-violet-500/10 px-4 py-2 text-sm text-violet-200">
+            Gratisgetränke – werden separat gezählt und nicht zum Schichtumsatz gerechnet.
+          </div>
+        )}
         <div className="grid min-h-0 auto-rows-min grid-cols-3 gap-3 overflow-y-auto pr-1 xl:grid-cols-4">
-          {category?.items.map((it) => (
+          {gridItems.map((it) => (
             <button
               key={it.id}
-              onClick={() => addItem(it)}
-              className="group flex aspect-square flex-col items-center justify-between rounded-2xl border border-neutral-800 bg-neutral-900 p-4 text-center transition hover:border-amber-400/50 hover:bg-neutral-800 active:scale-[0.97]"
+              onClick={() => addItem(it, isFreeCat)}
+              className={[
+                "group flex aspect-square flex-col items-center justify-between rounded-2xl border bg-neutral-900 p-4 text-center transition active:scale-[0.97]",
+                isFreeCat
+                  ? "border-violet-500/30 hover:border-violet-400 hover:bg-neutral-800"
+                  : "border-neutral-800 hover:border-amber-400/50 hover:bg-neutral-800",
+              ].join(" ")}
             >
               <span className="flex-1 items-center flex text-lg font-semibold leading-tight text-neutral-100">
                 {it.name}
               </span>
-              <span className="mt-2 rounded-lg bg-neutral-800 px-3 py-1 text-base font-bold text-amber-400 group-hover:bg-neutral-950">
+              <span
+                className={[
+                  "mt-2 rounded-lg bg-neutral-800 px-3 py-1 text-base font-bold group-hover:bg-neutral-950",
+                  isFreeCat ? "text-violet-300" : "text-amber-400",
+                ].join(" ")}
+              >
                 CHF {fmt(it.price)}
               </span>
             </button>
           ))}
         </div>
+
       </main>
 
       {/* Right: Cart */}
@@ -461,11 +610,25 @@ function POS({ onLogout }: { onLogout: () => void }) {
           ) : (
             <ul className="space-y-2">
               {cart.map((l) => (
-                <li key={l.id} className="flex items-center gap-2 rounded-xl bg-neutral-800/60 p-2">
+                <li
+                  key={l.id}
+                  className={[
+                    "flex items-center gap-2 rounded-xl p-2",
+                    l.free ? "bg-violet-500/10 ring-1 ring-violet-500/30" : "bg-neutral-800/60",
+                  ].join(" ")}
+                >
                   <div className="min-w-0 flex-1 px-2">
-                    <div className="truncate font-semibold">{l.name}</div>
+                    <div className="truncate font-semibold">
+                      {l.name}
+                      {l.free && (
+                        <span className="ml-2 rounded bg-violet-500/20 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-violet-300">
+                          Gratis
+                        </span>
+                      )}
+                    </div>
                     <div className="text-xs text-neutral-400">CHF {fmt(l.price)}</div>
                   </div>
+
                   <button
                     onClick={() => changeQty(l.id, -1)}
                     className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-neutral-700 text-lg font-bold hover:bg-neutral-600 active:scale-95"
@@ -497,7 +660,18 @@ function POS({ onLogout }: { onLogout: () => void }) {
               CHF {fmt(total)}
             </span>
           </div>
+          {freeTotal > 0 && (
+            <div className="mt-1 flex items-baseline justify-between">
+              <span className="text-xs uppercase tracking-widest text-violet-400">
+                Gratis-Wert
+              </span>
+              <span className="text-lg font-bold tabular-nums text-violet-300">
+                CHF {fmt(freeTotal)}
+              </span>
+            </div>
+          )}
         </div>
+
 
         <div className="space-y-3 border-t border-neutral-800 px-5 py-4">
           <div>
@@ -536,24 +710,37 @@ function POS({ onLogout }: { onLogout: () => void }) {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-2 border-t border-neutral-800 p-3">
-          <button
-            onClick={() => finalizeSale("Bar")}
-            disabled={cart.length === 0}
-            className="flex items-center justify-center gap-2 rounded-2xl bg-emerald-500 py-5 text-lg font-black text-neutral-950 shadow-lg shadow-emerald-500/20 transition hover:bg-emerald-400 active:scale-[0.98] disabled:opacity-40"
-          >
-            <Banknote className="h-6 w-6" />
-            Bar
-          </button>
-          <button
-            onClick={() => finalizeSale("Karte")}
-            disabled={cart.length === 0}
-            className="flex items-center justify-center gap-2 rounded-2xl bg-sky-500 py-5 text-lg font-black text-neutral-950 shadow-lg shadow-sky-500/20 transition hover:bg-sky-400 active:scale-[0.98] disabled:opacity-40"
-          >
-            <CreditCard className="h-6 w-6" />
-            Karte
-          </button>
-        </div>
+        {total === 0 && freeTotal > 0 ? (
+          <div className="border-t border-neutral-800 p-3">
+            <button
+              onClick={() => finalizeSale("Gratis")}
+              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-violet-500 py-5 text-lg font-black text-neutral-950 shadow-lg shadow-violet-500/20 transition hover:bg-violet-400 active:scale-[0.98]"
+            >
+              <Gift className="h-6 w-6" />
+              Gratis buchen
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-2 border-t border-neutral-800 p-3">
+            <button
+              onClick={() => finalizeSale("Bar")}
+              disabled={total === 0}
+              className="flex items-center justify-center gap-2 rounded-2xl bg-emerald-500 py-5 text-lg font-black text-neutral-950 shadow-lg shadow-emerald-500/20 transition hover:bg-emerald-400 active:scale-[0.98] disabled:opacity-40"
+            >
+              <Banknote className="h-6 w-6" />
+              Bar
+            </button>
+            <button
+              onClick={() => finalizeSale("Karte")}
+              disabled={total === 0}
+              className="flex items-center justify-center gap-2 rounded-2xl bg-sky-500 py-5 text-lg font-black text-neutral-950 shadow-lg shadow-sky-500/20 transition hover:bg-sky-400 active:scale-[0.98] disabled:opacity-40"
+            >
+              <CreditCard className="h-6 w-6" />
+              Karte
+            </button>
+          </div>
+        )}
+
       </aside>
 
       {adminOpen && (
@@ -561,10 +748,12 @@ function POS({ onLogout }: { onLogout: () => void }) {
           categories={categories}
           setCategories={setCategories}
           sales={sales}
+          shiftDate={shift?.date ?? todayKey()}
           onClose={() => setAdminOpen(false)}
           onCategoryAdded={(id) => setActiveCat(id)}
         />
       )}
+
 
       {salesOpen && (
         <SalesModal
