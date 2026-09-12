@@ -610,11 +610,25 @@ function POS({ onLogout }: { onLogout: () => void }) {
           ) : (
             <ul className="space-y-2">
               {cart.map((l) => (
-                <li key={l.id} className="flex items-center gap-2 rounded-xl bg-neutral-800/60 p-2">
+                <li
+                  key={l.id}
+                  className={[
+                    "flex items-center gap-2 rounded-xl p-2",
+                    l.free ? "bg-violet-500/10 ring-1 ring-violet-500/30" : "bg-neutral-800/60",
+                  ].join(" ")}
+                >
                   <div className="min-w-0 flex-1 px-2">
-                    <div className="truncate font-semibold">{l.name}</div>
+                    <div className="truncate font-semibold">
+                      {l.name}
+                      {l.free && (
+                        <span className="ml-2 rounded bg-violet-500/20 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-violet-300">
+                          Gratis
+                        </span>
+                      )}
+                    </div>
                     <div className="text-xs text-neutral-400">CHF {fmt(l.price)}</div>
                   </div>
+
                   <button
                     onClick={() => changeQty(l.id, -1)}
                     className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-neutral-700 text-lg font-bold hover:bg-neutral-600 active:scale-95"
