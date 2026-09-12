@@ -748,10 +748,12 @@ function POS({ onLogout }: { onLogout: () => void }) {
           categories={categories}
           setCategories={setCategories}
           sales={sales}
+          shiftDate={shift?.date ?? todayKey()}
           onClose={() => setAdminOpen(false)}
           onCategoryAdded={(id) => setActiveCat(id)}
         />
       )}
+
 
       {salesOpen && (
         <SalesModal
