@@ -660,7 +660,18 @@ function POS({ onLogout }: { onLogout: () => void }) {
               CHF {fmt(total)}
             </span>
           </div>
+          {freeTotal > 0 && (
+            <div className="mt-1 flex items-baseline justify-between">
+              <span className="text-xs uppercase tracking-widest text-violet-400">
+                Gratis-Wert
+              </span>
+              <span className="text-lg font-bold tabular-nums text-violet-300">
+                CHF {fmt(freeTotal)}
+              </span>
+            </div>
+          )}
         </div>
+
 
         <div className="space-y-3 border-t border-neutral-800 px-5 py-4">
           <div>
