@@ -809,6 +809,13 @@ function ReceiptModal({ sale, onClose }: { sale: Sale; onClose: () => void }) {
             <span>Datum:</span>
             <span>{fmtDate(sale.timestamp)}</span>
           </div>
+          {sale.shiftDate && (
+            <div className="flex justify-between">
+              <span>Schicht:</span>
+              <span>{fmtDay(sale.shiftDate)}</span>
+            </div>
+          )}
+
           <div className="flex justify-between">
             <span>Beleg-Nr.:</span>
             <span>{sale.receiptNo}</span>
@@ -820,13 +827,15 @@ function ReceiptModal({ sale, onClose }: { sale: Sale; onClose: () => void }) {
           <div className="my-2 border-t border-dashed border-black" />
           <table className="w-full">
             <tbody>
-              {sale.lines.map((l) => (
-                <tr key={l.id} className="align-top">
-                  <td className="pr-1">{l.qty}x</td>
-                  <td className="pr-1">{l.name}</td>
-                  <td className="text-right tabular-nums">{fmt(l.price * l.qty)}</td>
-                </tr>
-              ))}
+              {sale.lines
+                .filter((l) => !l.free)
+                .map((l) => (
+                  <tr key={l.id} className="align-top">
+                    <td className="pr-1">{l.qty}x</td>
+                    <td className="pr-1">{l.name}</td>
+                    <td className="text-right tabular-nums">{fmt(l.price * l.qty)}</td>
+                  </tr>
+                ))}
             </tbody>
           </table>
           <div className="my-2 border-t border-dashed border-black" />
@@ -834,6 +843,36 @@ function ReceiptModal({ sale, onClose }: { sale: Sale; onClose: () => void }) {
             <span>TOTAL CHF</span>
             <span className="tabular-nums">{fmt(sale.total)}</span>
           </div>
+          {sale.lines.some((l) => l.free) && (
+            <>
+              <div className="my-2 border-t border-dashed border-black" />
+              <div className="text-[11px] font-bold">GRATIS / JETON (nicht im Total)</div>
+              <table className="w-full">
+                <tbody>
+                  {sale.lines
+                    .filter((l) => l.free)
+                    .map((l) => (
+                      <tr key={l.id} className="align-top">
+                        <td className="pr-1">{l.qty}x</td>
+                        <td className="pr-1">{l.name}</td>
+                        <td className="text-right tabular-nums">{fmt(l.price * l.qty)}</td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+              <div className="flex justify-between font-bold">
+                <span>Gratis-Wert</span>
+                <span className="tabular-nums">
+                  {fmt(
+                    sale.freeTotal ??
+                      sale.lines
+                        .filter((l) => l.free)
+                        .reduce((a, l) => a + l.price * l.qty, 0),
+                  )}
+                </span>
+              </div>
+            </>
+          )}
           {sale.payment === "Bar" && (
             <>
               <div className="mt-1 flex justify-between">
@@ -848,6 +887,7 @@ function ReceiptModal({ sale, onClose }: { sale: Sale; onClose: () => void }) {
           )}
           <div className="my-2 border-t border-dashed border-black" />
           <div className="text-center text-[11px]">Vielen Dank!</div>
+
         </div>
 
         <div className="flex gap-2 border-t border-neutral-800 p-3 print:hidden">
@@ -976,15 +1016,18 @@ function AdminModal({
   categories,
   setCategories,
   sales,
+  shiftDate,
   onClose,
   onCategoryAdded,
 }: {
   categories: Category[];
   setCategories: React.Dispatch<React.SetStateAction<Category[]>>;
   sales: Sale[];
+  shiftDate: string;
   onClose: () => void;
   onCategoryAdded: (id: string) => void;
 }) {
+
   const [tab, setTab] = useState<"sortiment" | "zreport">("sortiment");
 
   return (
@@ -1040,7 +1083,7 @@ function AdminModal({
               onCategoryAdded={onCategoryAdded}
             />
           ) : (
-            <ZReportTab sales={sales} />
+            <ZReportTab sales={sales} shiftDate={shiftDate} />
           )}
         </div>
 
@@ -1357,19 +1400,28 @@ function SortimentTab({
   );
 }
 
-function ZReportTab({ sales }: { sales: Sale[] }) {
-  const [date, setDate] = useState<string>(() => new Date().toISOString().slice(0, 10));
+function ZReportTab({ sales, shiftDate }: { sales: Sale[]; shiftDate: string }) {
+  const [date, setDate] = useState<string>(shiftDate);
+
 
   const daySales = useMemo(
-    () => sales.filter((s) => s.timestamp.slice(0, 10) === date),
+    () => sales.filter((s) => (s.shiftDate ?? s.timestamp.slice(0, 10)) === date),
     [sales, date],
   );
 
   const totals = useMemo(() => {
     const cash = daySales.filter((s) => s.payment === "Bar").reduce((a, s) => a + s.total, 0);
     const card = daySales.filter((s) => s.payment === "Karte").reduce((a, s) => a + s.total, 0);
-    return { cash, card, sum: cash + card, count: daySales.length };
+    const free = daySales.reduce(
+      (a, s) =>
+        a +
+        (s.freeTotal ??
+          s.lines.filter((l) => l.free).reduce((x, l) => x + l.price * l.qty, 0)),
+      0,
+    );
+    return { cash, card, sum: cash + card, free, count: daySales.length };
   }, [daySales]);
+
 
   const exportCsv = () => {
     const sep = ";";
@@ -1378,23 +1430,43 @@ function ZReportTab({ sales }: { sales: Sale[] }) {
       const s = String(v).replace(/"/g, '""');
       return /[";\n]/.test(s) ? `"${s}"` : s;
     };
-    rows.push(`Z-Bericht Tagesabschluss`);
-    rows.push(`Datum${sep}${date}`);
+    rows.push(`Z-Bericht Schichtabschluss`);
+    rows.push(`Schichtdatum${sep}${date}`);
     rows.push(`Erstellt${sep}${new Date().toLocaleString("de-CH")}`);
     rows.push("");
-    rows.push(["Umsatz Bar", "Umsatz Karte", "Umsatz Total", "Anzahl Buchungen"].join(sep));
+    rows.push(
+      [
+        "Umsatz Bar",
+        "Umsatz Karte",
+        "Umsatz Total",
+        "Gratis-Wert (nicht im Umsatz)",
+        "Anzahl Buchungen",
+      ].join(sep),
+    );
     rows.push(
       [
         fmt(totals.cash),
         fmt(totals.card),
         fmt(totals.sum),
+        fmt(totals.free),
         String(totals.count),
       ].join(sep),
     );
     rows.push("");
     rows.push("Einzelbuchungen");
     rows.push(
-      ["Beleg-Nr.", "Datum/Zeit", "Zahlung", "Artikel", "Menge", "Einzelpreis", "Zeilentotal", "Beleg-Total"]
+      [
+        "Beleg-Nr.",
+        "Schichtdatum",
+        "Datum/Zeit",
+        "Zahlung",
+        "Artikel",
+        "Gratis",
+        "Menge",
+        "Einzelpreis",
+        "Zeilentotal",
+        "Beleg-Total",
+      ]
         .map(q)
         .join(sep),
     );
@@ -1403,14 +1475,17 @@ function ZReportTab({ sales }: { sales: Sale[] }) {
         rows.push(
           [
             s.receiptNo,
+            s.shiftDate ?? s.timestamp.slice(0, 10),
             new Date(s.timestamp).toLocaleString("de-CH"),
             s.payment,
             l.name,
+            l.free ? "Ja" : "Nein",
             l.qty,
             fmt(l.price),
             fmt(l.price * l.qty),
             fmt(s.total),
           ]
+
             .map(q)
             .join(sep),
         );
@@ -1432,7 +1507,7 @@ function ZReportTab({ sales }: { sales: Sale[] }) {
       <div className="flex flex-wrap items-end gap-4">
         <div className="flex flex-col gap-2">
           <label className="text-xs font-semibold uppercase tracking-widest text-neutral-500">
-            Datum
+            Schichtdatum
           </label>
           <input
             type="date"
@@ -1451,12 +1526,14 @@ function ZReportTab({ sales }: { sales: Sale[] }) {
         </button>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Kpi label="Tagesumsatz" value={`CHF ${fmt(totals.sum)}`} highlight />
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
+        <Kpi label="Schichtumsatz" value={`CHF ${fmt(totals.sum)}`} highlight />
         <Kpi label="Bar" value={`CHF ${fmt(totals.cash)}`} />
         <Kpi label="Karte" value={`CHF ${fmt(totals.card)}`} />
+        <Kpi label="Gratis-Wert" value={`CHF ${fmt(totals.free)}`} />
         <Kpi label="Buchungen" value={String(totals.count)} />
       </div>
+
 
       <div className="overflow-hidden rounded-xl border border-neutral-800">
         <div className="grid grid-cols-[80px_1fr_80px_100px] gap-2 border-b border-neutral-800 bg-neutral-800/60 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-neutral-400">
@@ -1468,7 +1545,7 @@ function ZReportTab({ sales }: { sales: Sale[] }) {
         <div className="max-h-72 overflow-y-auto">
           {daySales.length === 0 ? (
             <div className="px-4 py-8 text-center text-sm text-neutral-500">
-              Keine Buchungen an diesem Tag
+              Keine Buchungen in dieser Schicht
             </div>
           ) : (
             daySales.map((s) => (
