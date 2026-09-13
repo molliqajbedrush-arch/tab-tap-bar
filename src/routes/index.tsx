@@ -1360,8 +1360,9 @@ function SortimentTab({
   );
 }
 
-function ZReportTab({ sales }: { sales: Sale[] }) {
-  const [date, setDate] = useState<string>(() => new Date().toISOString().slice(0, 10));
+function ZReportTab({ sales, shiftDate }: { sales: Sale[]; shiftDate: string }) {
+  const [date, setDate] = useState<string>(shiftDate);
+
 
   const daySales = useMemo(
     () => sales.filter((s) => (s.shiftDate ?? s.timestamp.slice(0, 10)) === date),
