@@ -1505,7 +1505,7 @@ function ZReportTab({ sales, shiftDate }: { sales: Sale[]; shiftDate: string }) 
         <div className="max-h-72 overflow-y-auto">
           {daySales.length === 0 ? (
             <div className="px-4 py-8 text-center text-sm text-neutral-500">
-              Keine Buchungen an diesem Tag
+              Keine Buchungen in dieser Schicht
             </div>
           ) : (
             daySales.map((s) => (
