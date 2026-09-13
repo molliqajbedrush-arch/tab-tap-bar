@@ -1043,7 +1043,7 @@ function AdminModal({
               onCategoryAdded={onCategoryAdded}
             />
           ) : (
-            <ZReportTab sales={sales} />
+            <ZReportTab sales={sales} shiftDate={shiftDate} />
           )}
         </div>
 
