@@ -976,15 +976,18 @@ function AdminModal({
   categories,
   setCategories,
   sales,
+  shiftDate,
   onClose,
   onCategoryAdded,
 }: {
   categories: Category[];
   setCategories: React.Dispatch<React.SetStateAction<Category[]>>;
   sales: Sale[];
+  shiftDate: string;
   onClose: () => void;
   onCategoryAdded: (id: string) => void;
 }) {
+
   const [tab, setTab] = useState<"sortiment" | "zreport">("sortiment");
 
   return (
