@@ -1467,7 +1467,7 @@ function ZReportTab({ sales, shiftDate }: { sales: Sale[]; shiftDate: string }) 
       <div className="flex flex-wrap items-end gap-4">
         <div className="flex flex-col gap-2">
           <label className="text-xs font-semibold uppercase tracking-widest text-neutral-500">
-            Datum
+            Schichtdatum
           </label>
           <input
             type="date"
@@ -1486,12 +1486,14 @@ function ZReportTab({ sales, shiftDate }: { sales: Sale[]; shiftDate: string }) 
         </button>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Kpi label="Tagesumsatz" value={`CHF ${fmt(totals.sum)}`} highlight />
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
+        <Kpi label="Schichtumsatz" value={`CHF ${fmt(totals.sum)}`} highlight />
         <Kpi label="Bar" value={`CHF ${fmt(totals.cash)}`} />
         <Kpi label="Karte" value={`CHF ${fmt(totals.card)}`} />
+        <Kpi label="Gratis-Wert" value={`CHF ${fmt(totals.free)}`} />
         <Kpi label="Buchungen" value={String(totals.count)} />
       </div>
+
 
       <div className="overflow-hidden rounded-xl border border-neutral-800">
         <div className="grid grid-cols-[80px_1fr_80px_100px] gap-2 border-b border-neutral-800 bg-neutral-800/60 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-neutral-400">
