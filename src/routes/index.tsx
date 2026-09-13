@@ -1390,23 +1390,43 @@ function ZReportTab({ sales, shiftDate }: { sales: Sale[]; shiftDate: string }) 
       const s = String(v).replace(/"/g, '""');
       return /[";\n]/.test(s) ? `"${s}"` : s;
     };
-    rows.push(`Z-Bericht Tagesabschluss`);
-    rows.push(`Datum${sep}${date}`);
+    rows.push(`Z-Bericht Schichtabschluss`);
+    rows.push(`Schichtdatum${sep}${date}`);
     rows.push(`Erstellt${sep}${new Date().toLocaleString("de-CH")}`);
     rows.push("");
-    rows.push(["Umsatz Bar", "Umsatz Karte", "Umsatz Total", "Anzahl Buchungen"].join(sep));
+    rows.push(
+      [
+        "Umsatz Bar",
+        "Umsatz Karte",
+        "Umsatz Total",
+        "Gratis-Wert (nicht im Umsatz)",
+        "Anzahl Buchungen",
+      ].join(sep),
+    );
     rows.push(
       [
         fmt(totals.cash),
         fmt(totals.card),
         fmt(totals.sum),
+        fmt(totals.free),
         String(totals.count),
       ].join(sep),
     );
     rows.push("");
     rows.push("Einzelbuchungen");
     rows.push(
-      ["Beleg-Nr.", "Datum/Zeit", "Zahlung", "Artikel", "Menge", "Einzelpreis", "Zeilentotal", "Beleg-Total"]
+      [
+        "Beleg-Nr.",
+        "Schichtdatum",
+        "Datum/Zeit",
+        "Zahlung",
+        "Artikel",
+        "Gratis",
+        "Menge",
+        "Einzelpreis",
+        "Zeilentotal",
+        "Beleg-Total",
+      ]
         .map(q)
         .join(sep),
     );
@@ -1415,14 +1435,17 @@ function ZReportTab({ sales, shiftDate }: { sales: Sale[]; shiftDate: string }) 
         rows.push(
           [
             s.receiptNo,
+            s.shiftDate ?? s.timestamp.slice(0, 10),
             new Date(s.timestamp).toLocaleString("de-CH"),
             s.payment,
             l.name,
+            l.free ? "Ja" : "Nein",
             l.qty,
             fmt(l.price),
             fmt(l.price * l.qty),
             fmt(s.total),
           ]
+
             .map(q)
             .join(sep),
         );
