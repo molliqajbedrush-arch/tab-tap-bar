@@ -820,13 +820,15 @@ function ReceiptModal({ sale, onClose }: { sale: Sale; onClose: () => void }) {
           <div className="my-2 border-t border-dashed border-black" />
           <table className="w-full">
             <tbody>
-              {sale.lines.map((l) => (
-                <tr key={l.id} className="align-top">
-                  <td className="pr-1">{l.qty}x</td>
-                  <td className="pr-1">{l.name}</td>
-                  <td className="text-right tabular-nums">{fmt(l.price * l.qty)}</td>
-                </tr>
-              ))}
+              {sale.lines
+                .filter((l) => !l.free)
+                .map((l) => (
+                  <tr key={l.id} className="align-top">
+                    <td className="pr-1">{l.qty}x</td>
+                    <td className="pr-1">{l.name}</td>
+                    <td className="text-right tabular-nums">{fmt(l.price * l.qty)}</td>
+                  </tr>
+                ))}
             </tbody>
           </table>
           <div className="my-2 border-t border-dashed border-black" />
@@ -834,6 +836,36 @@ function ReceiptModal({ sale, onClose }: { sale: Sale; onClose: () => void }) {
             <span>TOTAL CHF</span>
             <span className="tabular-nums">{fmt(sale.total)}</span>
           </div>
+          {sale.lines.some((l) => l.free) && (
+            <>
+              <div className="my-2 border-t border-dashed border-black" />
+              <div className="text-[11px] font-bold">GRATIS / JETON (nicht im Total)</div>
+              <table className="w-full">
+                <tbody>
+                  {sale.lines
+                    .filter((l) => l.free)
+                    .map((l) => (
+                      <tr key={l.id} className="align-top">
+                        <td className="pr-1">{l.qty}x</td>
+                        <td className="pr-1">{l.name}</td>
+                        <td className="text-right tabular-nums">{fmt(l.price * l.qty)}</td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+              <div className="flex justify-between font-bold">
+                <span>Gratis-Wert</span>
+                <span className="tabular-nums">
+                  {fmt(
+                    sale.freeTotal ??
+                      sale.lines
+                        .filter((l) => l.free)
+                        .reduce((a, l) => a + l.price * l.qty, 0),
+                  )}
+                </span>
+              </div>
+            </>
+          )}
           {sale.payment === "Bar" && (
             <>
               <div className="mt-1 flex justify-between">
@@ -848,6 +880,7 @@ function ReceiptModal({ sale, onClose }: { sale: Sale; onClose: () => void }) {
           )}
           <div className="my-2 border-t border-dashed border-black" />
           <div className="text-center text-[11px]">Vielen Dank!</div>
+
         </div>
 
         <div className="flex gap-2 border-t border-neutral-800 p-3 print:hidden">
