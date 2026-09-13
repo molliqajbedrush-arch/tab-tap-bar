@@ -1361,15 +1361,23 @@ function ZReportTab({ sales }: { sales: Sale[] }) {
   const [date, setDate] = useState<string>(() => new Date().toISOString().slice(0, 10));
 
   const daySales = useMemo(
-    () => sales.filter((s) => s.timestamp.slice(0, 10) === date),
+    () => sales.filter((s) => (s.shiftDate ?? s.timestamp.slice(0, 10)) === date),
     [sales, date],
   );
 
   const totals = useMemo(() => {
     const cash = daySales.filter((s) => s.payment === "Bar").reduce((a, s) => a + s.total, 0);
     const card = daySales.filter((s) => s.payment === "Karte").reduce((a, s) => a + s.total, 0);
-    return { cash, card, sum: cash + card, count: daySales.length };
+    const free = daySales.reduce(
+      (a, s) =>
+        a +
+        (s.freeTotal ??
+          s.lines.filter((l) => l.free).reduce((x, l) => x + l.price * l.qty, 0)),
+      0,
+    );
+    return { cash, card, sum: cash + card, free, count: daySales.length };
   }, [daySales]);
+
 
   const exportCsv = () => {
     const sep = ";";
