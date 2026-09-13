@@ -809,6 +809,13 @@ function ReceiptModal({ sale, onClose }: { sale: Sale; onClose: () => void }) {
             <span>Datum:</span>
             <span>{fmtDate(sale.timestamp)}</span>
           </div>
+          {sale.shiftDate && (
+            <div className="flex justify-between">
+              <span>Schicht:</span>
+              <span>{fmtDay(sale.shiftDate)}</span>
+            </div>
+          )}
+
           <div className="flex justify-between">
             <span>Beleg-Nr.:</span>
             <span>{sale.receiptNo}</span>
