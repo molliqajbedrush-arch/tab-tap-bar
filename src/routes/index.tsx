@@ -1492,7 +1492,18 @@ function ZReportTab({ sales, shiftDate }: { sales: Sale[]; shiftDate: string }) 
       ].join(sep),
     );
     rows.push("");
+    rows.push("Getränke-Auswertung Schicht");
+    rows.push(
+      ["Getränk", "Menge verkauft", "Summe", "Menge gratis", "Gratis-Wert"].map(q).join(sep),
+    );
+    for (const it of itemStats) {
+      rows.push(
+        [it.name, it.qty, fmt(it.sum), it.freeQty, fmt(it.freeSum)].map(q).join(sep),
+      );
+    }
+    rows.push("");
     rows.push("Einzelbuchungen");
+
     rows.push(
       [
         "Beleg-Nr.",
