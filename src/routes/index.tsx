@@ -1402,12 +1402,51 @@ function SortimentTab({
 
 function ZReportTab({ sales, shiftDate }: { sales: Sale[]; shiftDate: string }) {
   const [date, setDate] = useState<string>(shiftDate);
+  const [openItem, setOpenItem] = useState<string | null>(null);
 
 
   const daySales = useMemo(
     () => sales.filter((s) => (s.shiftDate ?? s.timestamp.slice(0, 10)) === date),
     [sales, date],
   );
+
+  type ItemStat = {
+    name: string;
+    qty: number;
+    sum: number;
+    freeQty: number;
+    freeSum: number;
+    entries: { receiptNo: string; timestamp: string; qty: number; price: number; free: boolean }[];
+  };
+
+  const itemStats = useMemo<ItemStat[]>(() => {
+    const map = new Map<string, ItemStat>();
+    for (const s of daySales) {
+      for (const l of s.lines) {
+        let e = map.get(l.name);
+        if (!e) {
+          e = { name: l.name, qty: 0, sum: 0, freeQty: 0, freeSum: 0, entries: [] };
+          map.set(l.name, e);
+        }
+        if (l.free) {
+          e.freeQty += l.qty;
+          e.freeSum += l.price * l.qty;
+        } else {
+          e.qty += l.qty;
+          e.sum += l.price * l.qty;
+        }
+        e.entries.push({
+          receiptNo: s.receiptNo,
+          timestamp: s.timestamp,
+          qty: l.qty,
+          price: l.price,
+          free: !!l.free,
+        });
+      }
+    }
+    return [...map.values()].sort((a, b) => b.qty + b.freeQty - (a.qty + a.freeQty));
+  }, [daySales]);
+
 
   const totals = useMemo(() => {
     const cash = daySales.filter((s) => s.payment === "Bar").reduce((a, s) => a + s.total, 0);
@@ -1453,7 +1492,18 @@ function ZReportTab({ sales, shiftDate }: { sales: Sale[]; shiftDate: string }) 
       ].join(sep),
     );
     rows.push("");
+    rows.push("Getränke-Auswertung Schicht");
+    rows.push(
+      ["Getränk", "Menge verkauft", "Summe", "Menge gratis", "Gratis-Wert"].map(q).join(sep),
+    );
+    for (const it of itemStats) {
+      rows.push(
+        [it.name, it.qty, fmt(it.sum), it.freeQty, fmt(it.freeSum)].map(q).join(sep),
+      );
+    }
+    rows.push("");
     rows.push("Einzelbuchungen");
+
     rows.push(
       [
         "Beleg-Nr.",
@@ -1532,6 +1582,87 @@ function ZReportTab({ sales, shiftDate }: { sales: Sale[]; shiftDate: string }) 
         <Kpi label="Karte" value={`CHF ${fmt(totals.card)}`} />
         <Kpi label="Gratis-Wert" value={`CHF ${fmt(totals.free)}`} />
         <Kpi label="Buchungen" value={String(totals.count)} />
+      </div>
+
+      <div className="overflow-hidden rounded-xl border border-neutral-800">
+        <div className="grid grid-cols-[1fr_90px_110px_90px_110px] gap-2 border-b border-neutral-800 bg-neutral-800/60 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-neutral-400">
+          <span>Getränk</span>
+          <span className="text-right">Menge</span>
+          <span className="text-right">Summe</span>
+          <span className="text-right">Gratis</span>
+          <span className="text-right">Gratis-Wert</span>
+        </div>
+        <div className="max-h-80 overflow-y-auto">
+          {itemStats.length === 0 ? (
+            <div className="px-4 py-8 text-center text-sm text-neutral-500">
+              Keine Getränke in dieser Schicht
+            </div>
+          ) : (
+            itemStats.map((it) => {
+              const open = openItem === it.name;
+              return (
+                <div key={it.name} className="border-b border-neutral-800/60 last:border-b-0">
+                  <button
+                    onClick={() => setOpenItem(open ? null : it.name)}
+                    className={[
+                      "grid w-full grid-cols-[1fr_90px_110px_90px_110px] items-center gap-2 px-4 py-4 text-left text-base",
+                      open ? "bg-neutral-800/70" : "hover:bg-neutral-800/40",
+                    ].join(" ")}
+                  >
+                    <span className="truncate font-semibold text-neutral-100">{it.name}</span>
+                    <span className="text-right font-bold tabular-nums text-neutral-100">
+                      {it.qty}
+                    </span>
+                    <span className="text-right font-bold tabular-nums text-amber-400">
+                      {fmt(it.sum)}
+                    </span>
+                    <span className="text-right tabular-nums text-violet-300">
+                      {it.freeQty || "–"}
+                    </span>
+                    <span className="text-right tabular-nums text-violet-300">
+                      {it.freeQty ? fmt(it.freeSum) : "–"}
+                    </span>
+                  </button>
+                  {open && (
+                    <div className="bg-neutral-900/60 px-4 pb-4">
+                      <div className="grid grid-cols-[90px_1fr_70px_100px_110px] gap-2 py-2 text-xs font-semibold uppercase tracking-widest text-neutral-500">
+                        <span>Beleg</span>
+                        <span>Zeit</span>
+                        <span className="text-right">Menge</span>
+                        <span className="text-right">Preis</span>
+                        <span className="text-right">Total</span>
+                      </div>
+                      {it.entries.map((e, i) => (
+                        <div
+                          key={`${e.receiptNo}-${i}`}
+                          className="grid grid-cols-[90px_1fr_70px_100px_110px] gap-2 border-t border-neutral-800/60 py-2 text-sm"
+                        >
+                          <span className="font-bold text-amber-400">#{e.receiptNo}</span>
+                          <span className="text-neutral-400">
+                            {fmtDate(e.timestamp)}
+                            {e.free && (
+                              <span className="ml-2 text-violet-300">Gratis</span>
+                            )}
+                          </span>
+                          <span className="text-right tabular-nums">{e.qty}</span>
+                          <span className="text-right tabular-nums">{fmt(e.price)}</span>
+                          <span
+                            className={[
+                              "text-right font-bold tabular-nums",
+                              e.free ? "text-violet-300" : "text-neutral-100",
+                            ].join(" ")}
+                          >
+                            {fmt(e.price * e.qty)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
       </div>
 
 
