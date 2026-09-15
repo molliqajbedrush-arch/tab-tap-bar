@@ -1416,7 +1416,7 @@ function ZReportTab({ sales, shiftDate }: { sales: Sale[]; shiftDate: string }) 
     sum: number;
     freeQty: number;
     freeSum: number;
-    entries: { receiptNo: number; timestamp: string; qty: number; price: number; free: boolean }[];
+    entries: { receiptNo: string; timestamp: string; qty: number; price: number; free: boolean }[];
   };
 
   const itemStats = useMemo<ItemStat[]>(() => {
