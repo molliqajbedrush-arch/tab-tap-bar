@@ -1465,77 +1465,113 @@ function ZReportTab({ sales, shiftDate }: { sales: Sale[]; shiftDate: string }) 
   const exportCsv = () => {
     const sep = ";";
     const rows: string[] = [];
+    // Zahl ohne Tausender-Apostroph, Punkt-Dezimal → Excel erkennt Zahl
+    const num = (v: number) => v.toFixed(2);
     const q = (v: string | number) => {
       const s = String(v).replace(/"/g, '""');
       return /[";\n]/.test(s) ? `"${s}"` : s;
     };
-    rows.push(`Z-Bericht Schichtabschluss`);
-    rows.push(`Schichtdatum${sep}${date}`);
-    rows.push(`Erstellt${sep}${new Date().toLocaleString("de-CH")}`);
+
+    // Excel erzwingen, Semikolon als Trennzeichen zu nutzen
+    rows.push("sep=;");
     rows.push("");
+    rows.push("Z-BERICHT SCHICHTABSCHLUSS");
+    rows.push("");
+    rows.push(["Schichtdatum", date].map(q).join(sep));
+    rows.push(["Erstellt am", new Date().toLocaleString("de-CH")].map(q).join(sep));
+    rows.push(["Anzahl Buchungen", String(totals.count)].map(q).join(sep));
+
+    rows.push("");
+    rows.push("ÜBERSICHT UMSATZ");
+    rows.push(
+      ["Bar (CHF)", "Karte (CHF)", "Total Umsatz (CHF)", "Gratis-Wert (CHF)"]
+        .map(q)
+        .join(sep),
+    );
+    rows.push([num(totals.cash), num(totals.card), num(totals.sum), num(totals.free)].join(sep));
+
+    rows.push("");
+    rows.push("GETRÄNKE-AUSWERTUNG");
     rows.push(
       [
-        "Umsatz Bar",
-        "Umsatz Karte",
-        "Umsatz Total",
-        "Gratis-Wert (nicht im Umsatz)",
-        "Anzahl Buchungen",
-      ].join(sep),
-    );
-    rows.push(
-      [
-        fmt(totals.cash),
-        fmt(totals.card),
-        fmt(totals.sum),
-        fmt(totals.free),
-        String(totals.count),
-      ].join(sep),
-    );
-    rows.push("");
-    rows.push("Getränke-Auswertung Schicht");
-    rows.push(
-      ["Getränk", "Menge verkauft", "Summe", "Menge gratis", "Gratis-Wert"].map(q).join(sep),
+        "Getränk",
+        "Menge verkauft",
+        "Summe (CHF)",
+        "Menge gratis",
+        "Gratis-Wert (CHF)",
+        "Menge total",
+        "Wert total (CHF)",
+      ]
+        .map(q)
+        .join(sep),
     );
     for (const it of itemStats) {
       rows.push(
-        [it.name, it.qty, fmt(it.sum), it.freeQty, fmt(it.freeSum)].map(q).join(sep),
+        [
+          it.name,
+          String(it.qty),
+          num(it.sum),
+          String(it.freeQty),
+          num(it.freeSum),
+          String(it.qty + it.freeQty),
+          num(it.sum + it.freeSum),
+        ]
+          .map(q)
+          .join(sep),
       );
     }
-    rows.push("");
-    rows.push("Einzelbuchungen");
+    rows.push(
+      [
+        "TOTAL",
+        String(itemStats.reduce((a, i) => a + i.qty, 0)),
+        num(itemStats.reduce((a, i) => a + i.sum, 0)),
+        String(itemStats.reduce((a, i) => a + i.freeQty, 0)),
+        num(itemStats.reduce((a, i) => a + i.freeSum, 0)),
+        String(itemStats.reduce((a, i) => a + i.qty + i.freeQty, 0)),
+        num(itemStats.reduce((a, i) => a + i.sum + i.freeSum, 0)),
+      ]
+        .map(q)
+        .join(sep),
+    );
 
+    rows.push("");
+    rows.push("EINZELBUCHUNGEN");
     rows.push(
       [
         "Beleg-Nr.",
         "Schichtdatum",
-        "Datum/Zeit",
+        "Datum",
+        "Zeit",
         "Zahlung",
         "Artikel",
         "Gratis",
         "Menge",
-        "Einzelpreis",
-        "Zeilentotal",
-        "Beleg-Total",
+        "Einzelpreis (CHF)",
+        "Zeilentotal (CHF)",
+        "Beleg-Total (CHF)",
       ]
         .map(q)
         .join(sep),
     );
     for (const s of daySales) {
+      const d = new Date(s.timestamp);
+      const dateStr = `${String(d.getDate()).padStart(2, "0")}.${String(d.getMonth() + 1).padStart(2, "0")}.${d.getFullYear()}`;
+      const timeStr = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}:${String(d.getSeconds()).padStart(2, "0")}`;
       for (const l of s.lines) {
         rows.push(
           [
             s.receiptNo,
             s.shiftDate ?? s.timestamp.slice(0, 10),
-            new Date(s.timestamp).toLocaleString("de-CH"),
+            dateStr,
+            timeStr,
             s.payment,
             l.name,
             l.free ? "Ja" : "Nein",
-            l.qty,
-            fmt(l.price),
-            fmt(l.price * l.qty),
-            fmt(s.total),
+            String(l.qty),
+            num(l.price),
+            num(l.price * l.qty),
+            num(s.total),
           ]
-
             .map(q)
             .join(sep),
         );
