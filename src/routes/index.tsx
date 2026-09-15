@@ -1402,12 +1402,51 @@ function SortimentTab({
 
 function ZReportTab({ sales, shiftDate }: { sales: Sale[]; shiftDate: string }) {
   const [date, setDate] = useState<string>(shiftDate);
+  const [openItem, setOpenItem] = useState<string | null>(null);
 
 
   const daySales = useMemo(
     () => sales.filter((s) => (s.shiftDate ?? s.timestamp.slice(0, 10)) === date),
     [sales, date],
   );
+
+  type ItemStat = {
+    name: string;
+    qty: number;
+    sum: number;
+    freeQty: number;
+    freeSum: number;
+    entries: { receiptNo: number; timestamp: string; qty: number; price: number; free: boolean }[];
+  };
+
+  const itemStats = useMemo<ItemStat[]>(() => {
+    const map = new Map<string, ItemStat>();
+    for (const s of daySales) {
+      for (const l of s.lines) {
+        let e = map.get(l.name);
+        if (!e) {
+          e = { name: l.name, qty: 0, sum: 0, freeQty: 0, freeSum: 0, entries: [] };
+          map.set(l.name, e);
+        }
+        if (l.free) {
+          e.freeQty += l.qty;
+          e.freeSum += l.price * l.qty;
+        } else {
+          e.qty += l.qty;
+          e.sum += l.price * l.qty;
+        }
+        e.entries.push({
+          receiptNo: s.receiptNo,
+          timestamp: s.timestamp,
+          qty: l.qty,
+          price: l.price,
+          free: !!l.free,
+        });
+      }
+    }
+    return [...map.values()].sort((a, b) => b.qty + b.freeQty - (a.qty + a.freeQty));
+  }, [daySales]);
+
 
   const totals = useMemo(() => {
     const cash = daySales.filter((s) => s.payment === "Bar").reduce((a, s) => a + s.total, 0);
