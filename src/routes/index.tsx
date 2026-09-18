@@ -337,11 +337,18 @@ function POS({ onLogout }: { onLogout: () => void }) {
   useEffect(() => {
     setSales(loadSales());
     setShift(loadShift());
+    const storedVersion = parseInt(localStorage.getItem(CATS_VERSION_KEY) || "1", 10);
     const cats = readJSON<Category[] | null>(CATS_KEY, null);
-    if (cats && cats.length) {
+    if (storedVersion < CATS_VERSION) {
+      // Einmalige Übernahme der aktuellen Preisliste
+      localStorage.setItem(CATS_VERSION_KEY, String(CATS_VERSION));
+      setCategories(INITIAL_CATEGORIES);
+      setActiveCat(INITIAL_CATEGORIES[0].id);
+    } else if (cats && cats.length) {
       setCategories(cats);
       setActiveCat(cats[0].id);
     }
+
     const saved = readJSON<{ cart: CartLine[]; given: string } | null>(CART_KEY, null);
     if (saved) {
       setCart(saved.cart ?? []);
