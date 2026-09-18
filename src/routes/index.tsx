@@ -47,57 +47,68 @@ type Sale = {
 
 const INITIAL_CATEGORIES: Category[] = [
   {
-    id: "mineral",
-    name: "Mineral",
-    items: [
-      { id: "m1", name: "Wasser still", price: 4.5 },
-      { id: "m2", name: "Wasser mit", price: 4.5 },
-      { id: "m3", name: "Coca-Cola", price: 5 },
-      { id: "m4", name: "Cola Zero", price: 5 },
-      { id: "m5", name: "Rivella", price: 5 },
-      { id: "m6", name: "Sprite", price: 5 },
-      { id: "m7", name: "Fanta", price: 5 },
-      { id: "m8", name: "Red Bull", price: 7 },
-    ],
-  },
-  {
     id: "bier",
     name: "Bier",
     items: [
-      { id: "b1", name: "Feldschlösschen", price: 6 },
-      { id: "b2", name: "Quöllfrisch", price: 6.5 },
-      { id: "b3", name: "Heineken", price: 7 },
+      { id: "b1", name: "Offenbier", price: 7 },
+      { id: "b2", name: "Smirnoff Ice", price: 8 },
+      { id: "b3", name: "SuperBock", price: 8 },
       { id: "b4", name: "Corona", price: 8 },
-      { id: "b5", name: "Weizen", price: 7.5 },
-      { id: "b6", name: "IPA", price: 8 },
-      { id: "b7", name: "Alkoholfrei", price: 5.5 },
-      { id: "b8", name: "Panaché", price: 6 },
+      { id: "b5", name: "Panaché", price: 8 },
     ],
   },
   {
     id: "longdrinks",
     name: "Longdrinks",
     items: [
-      { id: "l1", name: "Gin Tonic", price: 14 },
-      { id: "l2", name: "Vodka Red Bull", price: 15 },
-      { id: "l3", name: "Cuba Libre", price: 13 },
-      { id: "l4", name: "Whisky Cola", price: 14 },
-      { id: "l5", name: "Moscow Mule", price: 15 },
-      { id: "l6", name: "Aperol Spritz", price: 13 },
-      { id: "l7", name: "Hugo", price: 12 },
-      { id: "l8", name: "Caipirinha", price: 15 },
+      { id: "l1", name: "Gin Tonic Hendricks", price: 16 },
+      { id: "l2", name: "Aperol Spritz", price: 13 },
+      { id: "l3", name: "Vodka Red Bull", price: 16 },
+      { id: "l4", name: "Cuba Libre Havana", price: 16 },
+      { id: "l5", name: "Whisky Cola", price: 15 },
+      { id: "l6", name: "Caipirinha", price: 15 },
+      { id: "l7", name: "Gin Tonic Bombay", price: 15 },
+      { id: "l8", name: "Toni Mate Vodka", price: 16 },
     ],
   },
   {
     id: "shots",
     name: "Shots",
     items: [
-      { id: "s1", name: "Tequila", price: 6 },
-      { id: "s2", name: "Jägermeister", price: 6 },
-      { id: "s3", name: "Sambuca", price: 6 },
-      { id: "s4", name: "Vodka", price: 5 },
-      { id: "s5", name: "Fireball", price: 7 },
-      { id: "s6", name: "Baileys", price: 6 },
+      { id: "s1", name: "Tequila", price: 5 },
+      { id: "s2", name: "Fireball", price: 5 },
+      { id: "s3", name: "Jägermeister", price: 5 },
+      { id: "s4", name: "Baileys", price: 5 },
+      { id: "s5", name: "Sambuca", price: 5 },
+      { id: "s6", name: "Vodka", price: 5 },
+    ],
+  },
+  {
+    id: "flaschen",
+    name: "Flaschen",
+    items: [
+      { id: "f1", name: "Prossecco", price: 70 },
+      { id: "f2", name: "Gin Bombay", price: 130 },
+      { id: "f3", name: "Belveder", price: 240 },
+      { id: "f4", name: "Hendricks", price: 150 },
+      { id: "f5", name: "Jack Daniels", price: 170 },
+      { id: "f6", name: "Absolut", price: 170 },
+      { id: "f7", name: "Chivas", price: 200 },
+      { id: "f8", name: "Berliner Luft", price: 120 },
+    ],
+  },
+  {
+    id: "mineral",
+    name: "Mineral",
+    items: [
+      { id: "m1", name: "Pepsi", price: 6 },
+      { id: "m2", name: "Toni Mate", price: 7 },
+      { id: "m3", name: "Wasser", price: 6 },
+      { id: "m4", name: "Sprite", price: 6 },
+      { id: "m5", name: "Nestea", price: 5 },
+      { id: "m6", name: "Fanta", price: 6 },
+      { id: "m7", name: "Redbull", price: 8 },
+      { id: "m8", name: "Saft offen", price: 6 },
     ],
   },
 ];
@@ -105,11 +116,14 @@ const INITIAL_CATEGORIES: Category[] = [
 const SALES_KEY = "pos.sales.v1";
 const RECEIPT_KEY = "pos.receiptCounter.v1";
 const CATS_KEY = "pos.categories.v1";
+const CATS_VERSION_KEY = "pos.categoriesVersion";
+const CATS_VERSION = 2;
 const CART_KEY = "pos.cart.v1";
 const PIN_KEY = "pos.adminPin.v1";
 const SESSION_KEY = "pos.session.v1";
 const SHIFT_KEY = "pos.shift.v1";
 const DEFAULT_PIN = "1234";
+
 
 const FREE_CAT = "__free";
 const FREE_CAT_NAME = "Spezial / Jeton";
